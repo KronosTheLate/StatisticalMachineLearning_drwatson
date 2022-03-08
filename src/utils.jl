@@ -44,31 +44,9 @@ end
 testclasses(tts::TrainTestSplit) = getfield.(tts.test, :class)
 trainclasses(tts::TrainTestSplit) = getfield.(tts.train, :class)
 
-"""
-    TrainTestSplit(pics::AbstractVector{Picture}, train_to_test_ratio::Rational, shuffle_pics::Bool=true)
-    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture}, test::AbstractVector{Picture{T}})
-"""
-struct TrainTestSplit{T}
-    ratio::Rational
-    n::Int
-    train::AbstractVector{Picture{T}}
-    test::AbstractVector{Picture{T}}
-    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T<:Real} = new{T}(ratio, n, train, test)
-    TrainTestSplit(train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T<:Real} = new{T}(length(train)//length(test), length(train)+length(test), train, test)
-    function TrainTestSplit(pics::AbstractVector{Picture{T}}, train_to_test_ratio::Rational, shuffle_pics::Bool=true) where {T<:Real}
-        if shuffle_pics
-            pics = pics[shuffle(eachindex(pics))]
-        end
-        n_parts = train_to_test_ratio.num + train_to_test_ratio.den
-
-        trainpics = pics[begin : train_to_test_ratio.num//n_parts * end ÷1]
-        testpics = pics[(end - train_to_test_ratio.den//n_parts * end ÷1 +1) : end]
-        return new{T}(train_to_test_ratio, length(pics), trainpics, testpics)
-    end
-end
-testclasses(tts::TrainTestSplit) = getfield.(tts.test, :class)
-trainclasses(tts::TrainTestSplit) = getfield.(tts.train, :class)
-
+import Base: show
+show(io::IO, p::Picture) = println(io, "A $(p.class) drawn by $(p.ID)")
+show(io::IO, tts::TrainTestSplit) = println(io, "A TrainTestSplit object with $(tts.n) entries, of train to test ratio $(tts.ratio)")
 
 using DataFrames
 const Dflatten = DataFrames.flatten   #? To handle naming conflict with my own function
