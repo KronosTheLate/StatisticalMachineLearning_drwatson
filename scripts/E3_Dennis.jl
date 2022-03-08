@@ -42,9 +42,8 @@ let pics = pictures_ID1_selection
     end
     global h_cluster = hclust(pic_dists; linkage)
 end
+h_cluster
 fieldnames(Hclust)
-
-euclidean(pictures[1], pictures[2])
 
 ##?  3.2.2 Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, and perform hierarchical clustering to show a low level dendrogram of this (one person).
 ##?  3.1.3 Discuss the results and relate them to the cross validation tables from k-NN classification.
