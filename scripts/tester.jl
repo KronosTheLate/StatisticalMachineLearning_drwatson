@@ -11,20 +11,12 @@ for file in readdir(srcdir())
 end
 
 ##!============================================================================!##
+
+##! Testing produce_or_load. Save as CSV to allow saving dataframe. With JLD2,
+##! only dicts can be saved.
 using DataFrames
 
-
 config = (k = 3, )
-data1, _ = produce_or_load(datadir("sims"), config, prefix = "test1", suffix="csv") do config
+data, _ = produce_or_load(datadir("sims"), config, prefix = "test", suffix="csv") do config
     DataFrame(x = 10:20, k_timesx_squared= config.k.* (10:20).^2)
 end
-data1
-data2, _ = produce_or_load(datadir("sims"), config, prefix = "test2", suffix="csv") do config
-    return DataFrame(x = 10:20, k_timesx_squared= config.k.* (10:20).^2)
-end
-data2
-data3, _ = produce_or_load(datadir("sims"), config, prefix = "test3", suffix="csv") do config
-    results = DataFrame(x = 10:20, k_timesx_squared= config.k.* (10:20).^2)
-    return results
-end
-data3
