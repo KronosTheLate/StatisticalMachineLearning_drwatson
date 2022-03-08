@@ -1,4 +1,5 @@
 using GLMakie
+using Clustering
 
 struct Picture{T}
     ID::Int
