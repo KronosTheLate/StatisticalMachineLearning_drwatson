@@ -22,11 +22,28 @@ end
 ##!======================================================!##
 
 ##?  3.2: Hierarchical clustering
-##?  3.2.1 Show a low level dendrogram containing 5 instances of each digit ( one person ).
+##?  3.2.1 Show a low level dendrogram containing 5 instances of each digit
+     #?( one person ).
 using Distances
-import Distances: dist
-pictures = Picture.(ciphers|>eachrow)
-filter(p->p.ID==1, pictures)
+
+pictures = Picture.(ciphers|>eachrow) |> remove_constant
+pictures_ID1 = filter(p->p.ID==1, pictures)
+pictures_ID1_selection = [filter(p->p.class==i, pictures_ID1)[1:5] for i in 0:9] |> x->vcat(x...)
+pictures_ID1_selection
+let pics = pictures_ID1_selection
+    linkage = :single  #* could be :average _complete
+    n = length(pics)
+    pic_dists = Matrix{Float64}(undef, n, n)
+    for i in 1:n
+        for j in 1:i
+            the_dist = euclidean(pics[i], pics[j])
+            pic_dists[i, j] = pic_dists[j, i] = the_dist
+        end
+    end
+    global h_cluster = hclust(pic_dists; linkage)
+end
+fieldnames(Hclust)
+
 euclidean(pictures[1], pictures[2])
 
 ##?  3.2.2 Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, and perform hierarchical clustering to show a low level dendrogram of this (one person).
