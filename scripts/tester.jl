@@ -12,6 +12,13 @@ for file in readdir(srcdir())
     include(joinpath(srcdir(), file))
 end
 
+if "ciphers33.RData" ∈ readdir(datadir())
+    ciphers = load(datadir("ciphers33.RData"))["ciphers"]
+else
+    download("https://nextcloud.sdu.dk/index.php/s/Zzjcqjopy5cTawn/download/data_33.Rdata", datadir("ciphers33.RData"))
+    ciphers = load(datadir("ciphers33.RData"))["ciphers"]
+end
+
 ##!============================================================================!##
 
 ##! Testing produce_or_load. Save as CSV to allow saving dataframe. With JLD2,
