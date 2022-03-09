@@ -214,6 +214,7 @@ end
 using ImageFiltering
 gaussian_filter(p::Picture, σ) = Picture(p.ID, p.class, imfilter(p.data|>unflatten, Kernel.gaussian(σ))|>flatten)
 
+using Distances
 #* Allow calculation of distance between two pictures:
 for M in (Distances.metrics..., Distances.weightedmetrics...)
     @eval @inline (dist::$M)(a::Picture, b::Picture) = Distances._evaluate(dist, a.data, b.data, Distances.parameters(dist))
