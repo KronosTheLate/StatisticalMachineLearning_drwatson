@@ -12,12 +12,6 @@ for file in readdir(srcdir())
     include(joinpath(srcdir(), file))
 end
 
-if "ciphers33.RData" ∈ readdir(datadir())
-    ciphers = load(datadir("ciphers33.RData"))["ciphers"]
-else
-    download("https://nextcloud.sdu.dk/index.php/s/Zzjcqjopy5cTawn/download/data_33.Rdata", datadir("ciphers33.RData"))
-    ciphers = load(datadir("ciphers33.RData"))["ciphers"]
-end
 
 ##!============================================================================!##
 
@@ -28,3 +22,4 @@ using DataFrames
 data, _ = produce_or_load(datadir("sims", "subfolder"), (k = 3, length=20),   prefix = "test_run",            suffix="csv"             ) do params #* params is the 2nd argument NamedTuple, in this case (k=3,)
     DataFrame(x = 10:20, k_timesx_squared= params.k.* (10:20).^2)
 end
+
