@@ -26,15 +26,20 @@ end
 
 ##!======================================================!##
 
-##?  3.2: Hierarchical clustering
+#?  3.2: Hierarchical clustering
 ##?  3.2.1 Show a low level dendrogram containing 5 instances of each digit
-     #?( one person ).
+#?( one person ).
 
-pictures = Picture.(ciphers|>eachrow) |> remove_constant
-pictures_ID1 = filter(p->p.ID==13, pictures)
-pictures_ID1_selection = [filter(p->p.class==i, pictures_ID1)[1:8] for i in 0:9] |> x->vcat(x...)
+
+
+pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
+person(ID) = filter(x -> x.ID == ID, pictures)
+numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
+
+pictures_oneperson = person(i)
+pictures_oneperson_selection = [filter(p->p.class==i, pictures_oneperson)[1:8] for i in 0:9] |> x->vcat(x...)
 linkage = :ward  #* could be :single, :average, :complete, :ward
-let pics = pictures_ID1_selection
+let pics = pictures_oneperson_selection
     n = length(pics)
     pic_dists = Matrix{Float64}(undef, n, n)
     for i in 1:n
@@ -48,15 +53,20 @@ end
 
 import StatsPlots  ##? Import does not define stuff from StatsPlots, but makes StatsPlots.plot available. Allows simultaneous use of Makie
 plt = StatsPlots.plot(h_cluster, title="Linkage = $linkage", size=(1920÷2, 1080÷2))
-tick_labels = [pictures_ID1_selection[i].class|>string for i in parse.(Int64, StatsPlots.xticks(plt)[1][2])]
+tick_labels = [pictures_oneperson_selection[i].class|>string for i in parse.(Int64, StatsPlots.xticks(plt)[1][2])]
 StatsPlots.xticks!(StatsPlots.xticks(plt)[1][1], tick_labels)
 plt
 
+#! Conclusion - the hierarchical clustering does get several things right, but it is not impressive.
 
 
-##?  3.2.2 Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, and perform hierarchical clustering to show a low level dendrogram of this (one person).
+##?  3.2.2 Use K-Means clustering to compress each digit into 5 clusters,
+#?   as done in 3.1.1, and perform hierarchical clustering to show a low 
+#?   level dendrogram of this (one person).
 
-##?  3.2.3 Discuss the results and relate them to the cross validation tables from k-NN classification.
+
+##?  3.2.3 Discuss the results and relate them to the cross validation
+#?   tables from k-NN classification.
 
 
 function treepositions(hc::Hclust, useheight::Bool, orientation=:vertical)
