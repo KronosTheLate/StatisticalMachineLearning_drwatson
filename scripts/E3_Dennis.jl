@@ -1,12 +1,17 @@
 using Pkg
-paths = [raw"C:\Users\Dennis Bal\GeekyStuff\Julia\6. Sem\Statistical Machine Learning\drwatson", raw"C:\Users\Asbjo\OneDrive - Syddansk Universitet\Machine\GitHubulub\StatisticalMachineLearning_drwatson" ]
+paths = [raw"C:\Users\Asbjo\OneDrive - Syddansk Universitet\Machine\GitHubulub\StatisticalMachineLearning_drwatson", raw"C:\Users\Dennis Bal\GeekyStuff\Julia\6. Sem\Statistical Machine Learning\drwatson"]
 for path in paths
     if path|>isdir
         path|>Pkg.activate
         Pkg.instantiate()
+        break
+    else
+        continue
     end
-#    "Project not activated" |> error
+    "Project not activated. Ensure that the repository is
+    cloned locally to one of the locations in `paths`." |> error
 end
+
 using DrWatson
 for file in readdir(srcdir())
     include(joinpath(srcdir(), file))
@@ -74,3 +79,7 @@ function treepositions(hc::Hclust, useheight::Bool, orientation=:vertical)
         return xs, ys
     end
 end
+
+xs, ys = treepositions(h_cluster, true)
+xs
+ys
