@@ -47,3 +47,30 @@ fieldnames(Hclust)
 
 ##?  3.2.2 Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, and perform hierarchical clustering to show a low level dendrogram of this (one person).
 ##?  3.1.3 Discuss the results and relate them to the cross validation tables from k-NN classification.
+
+
+function treepositions(hc::Hclust, useheight::Bool, orientation=:vertical)
+
+    order = StatsBase.indexmap(hc.order)
+    nodepos = Dict(-i => (float(order[i]), 0.0) for i in hc.order)
+
+    xs = Array{Float64}(undef, 4, size(hc.merges, 1))
+    ys = Array{Float64}(undef, 4, size(hc.merges, 1))
+
+    for i in 1:size(hc.merges, 1)
+        x1, y1 = nodepos[hc.merges[i, 1]]
+        x2, y2 = nodepos[hc.merges[i, 2]]
+
+        xpos = (x1 + x2) / 2
+        ypos = useheight ?  hc.heights[i] : (max(y1, y2) + 1)
+        
+        nodepos[i] = (xpos, ypos)
+        xs[:, i] .= [x1, x1, x2, x2]
+        ys[:, i] .= [y1, ypos, ypos, y2]
+    end
+    if orientation == :horizontal
+        return ys, xs
+    else
+        return xs, ys
+    end
+end
