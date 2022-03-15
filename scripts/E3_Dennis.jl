@@ -67,10 +67,11 @@ end
 
 #* Splitting pictures from 1 person into 10 vectors, each for a seperate digit.
 picss_batched_322 =  batch(person(13), 10, false)
-
+picss_batched_322[2]
 #* Finding 5 k-means clusters  for each
-clusters = [kmeans(picss_batched_322[i]|>datamat, 5) for i in 1:10]
-
+n_clusters = 3
+clusters = [kmeans(picss_batched_322[i]|>datamat, n_clusters) for i in 1:10]
+clusters
 #* Putting the centers of the clusters into the same matrix
 centers = hcat(getfield.(clusters, :centers)...)
 
@@ -87,9 +88,9 @@ let
     end
     h_cluster_322 = hclust(dists; linkage)
     plt = StatsPlots.plot(h_cluster_322, title="Linkage = $linkage", size=(1920÷2, 1080÷2), label="", legend=true)
-    tick_labels = map_labels(repeat(0:9, 5) |> sort, h_cluster_322)
+    tick_labels = map_labels(repeat(0:9, n_clusters) |> sort, h_cluster_322)
     StatsPlots.xticks!(h_cluster_322.order|>eachindex, tick_labels)
-    StatsPlots.hline!([+(reverse(h_cluster_322.heights)[9:10]...)/2], label="Split in 10")
+    # StatsPlots.hline!([+(reverse(h_cluster_322.heights)[9:10]...)/2], label="Split in 10")
     plt
 end
 
@@ -98,24 +99,23 @@ end
 ##?  3.2.3 Discuss the results and relate them to the cross validation
 #?   tables from k-NN classification.
 #* It looks like the clustering is pretty poor - most numbers are not put into the sensible clusters
-#* From what I can see, clustering should DRASTICALLY make preformance worse.
+#* From what I can see, clustering should DRASTICALLY make performance worse, for a small n_clusters.
 
 #=
-3.1: K-means clustering
-3.1.1 Try to improve the performance on 2-person (disjunct) dataset (you can select any 2 person data for this) using K-means clustering. Perform K- means clustering of each cipher individually for the training set, in order to represent the training data as a number of cluster centroids. Now perform the training of the k-NN using the centroids of these clusters. You can try with different cluster sizes and see the resulting performance.
+#? 3.1: K-means clustering
+#ToDo 3.1.1 Try to improve the performance on 2-person (disjunct) dataset (you can select any 2 person data for this) using K-means clustering. Perform K- means clustering of each cipher individually for the training set, in order to represent the training data as a number of cluster centroids. Now perform the training of the k-NN using the centroids of these clusters. You can try with different cluster sizes and see the resulting performance.
 
-3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
+#ToDo 3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
 
-3.1.3 Perform K-means clustering on each cipher individually for the training data from all the available datasets (disjunct). Represent the training data as a number of cluster centroids and compare performance, try multiple cluster sizes.
+#ToDo 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the available datasets (disjunct). Represent the training data as a number of cluster centroids and compare performance, try multiple cluster sizes.
 
+#? 3.3: Evaluation methods of k-NN
+#ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 
-3.3: Evaluation methods of k-NN
-As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
+#ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 
-3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
+#ToDo 3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
 
-3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
-
-3.3.3 Discuss the results from 3.3.1 and 3.3.2. What do you think would be the most important part of a digit recognition system. Precision or recall? Please discuss in what situations would the different factors be more important?
-
+#ToDo 3.3.3 Discuss the results from 3.3.1 and 3.3.2. What do you think would be the most important part of a digit recognition system. Precision or recall? Please discuss in what situations would the different factors be more important?
 =#
+@time knn_acc(TrainTestSplit(pictures[1:10:end], 1//1), k=1)
