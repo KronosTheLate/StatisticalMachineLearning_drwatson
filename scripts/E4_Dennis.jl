@@ -1,0 +1,1 @@
+#? Discretize the range of values of principle componten coefficient in e.g. 200
