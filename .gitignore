@@ -1,13 +1,17 @@
+#Custum:
+#Files that end with RData
+*.RData  
+
 ################################################################################
 #                          DrWatson Project Structure                          #
 ################################################################################
 
 # Folders to ignore - files may be too large, too many, etc. NOTE: EDIT IF NEEDED.
-data
-videos
-plots
-notebooks
-_research
+# data
+# videos
+# plots
+# notebooks
+# _research
 
 ################################################################################
 #                                    Julia                                     #

@@ -40,6 +40,9 @@ pictures = Picture.( ciphers|>eachrow );
 
 
 # lets find 2 people
+#! Comment - calling `remove constant` in the function `person`
+#! is bad practice - the name `person` does not suggest that the
+#! constant is removed. Maybie remove the constant values when defining the data?
 person(ID) = filter(x -> x.ID == ID, pictures) |>remove_constant # returns ID, CLass, and data for person 1
 numbersearch(data, nr) = (filter(x -> x.class == nr, data))
 
