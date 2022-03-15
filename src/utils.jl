@@ -1,6 +1,7 @@
 using GLMakie
 using Clustering
 using Distances
+using Statistics
 
 struct Picture{T}
     ID::Int
@@ -133,6 +134,7 @@ function knn_acc(tts::TrainTestSplit{<:Real}; tiebreaker=rand, kwargs...)
 	preds = classify(inds, trainclasses(tts); tiebreaker)
 	return mean(preds .== testclasses(tts))
 end
+knn_acc(train::Vector{<:Picture}, test::Vector{<:Picture}; kwargs...) = knn_acc(TrainTestSplit(train, test), kwargs...)
 
 """
 	knn_acc_crossvalidate(pics::Vector{Picture}, ratio::Rational = 9//1)
@@ -221,5 +223,6 @@ using Distances
 for M in (Distances.metrics..., Distances.weightedmetrics...)
     @eval @inline (dist::$M)(a::Picture, b::Picture) = Distances._evaluate(dist, a.data, b.data, Distances.parameters(dist))
 end
+
 
 @info "utils.jl included"
