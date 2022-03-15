@@ -3,7 +3,7 @@ using Clustering
 using Distances
 using Statistics
 
-struct Picture{T}
+struct Picture{T<:Real}
     ID::Int
     class::Int
     data::AbstractVector{T}
@@ -11,27 +11,27 @@ struct Picture{T}
         try
             Int64(sqrt(length(x[begin+2:end])))
         catch e
-            error("The input vector, with the first two values removed, is not square")
+            error("The input vector, with the first two values removed, can not be squared.")
         end
         return new{eltype(x)}(x[1], x[2], x[3:end])
     end
-    Picture(a::Int, b::Int, c::Vector{T}) where {T<:Real} = new{T}(a, b, c)
+    Picture(a::Int, b::Int, c::Vector{<:Real}) = new{eltype(c)}(a, b, c)
 end
 import Base: getproperty
-getproperty(x::Vector{Picture{T}}, f::Symbol) where {T<:Real} = getproperty.(x, f)
+getproperty(x::Vector{<:Picture}, f::Symbol) = getproperty.(x, f)
 
-
+using Random: shuffle
 """
     TrainTestSplit(pics::AbstractVector{Picture}, train_to_test_ratio::Rational, shuffle_pics::Bool=true)
     TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture}, test::AbstractVector{Picture{T}})
 """
-struct TrainTestSplit{T}
+struct TrainTestSplit{T<:Real}
     ratio::Rational
     n::Int
     train::AbstractVector{Picture{T}}
     test::AbstractVector{Picture{T}}
-    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T<:Real} = new{T}(ratio, n, train, test)
-    TrainTestSplit(train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T<:Real} = new{T}(length(train)//length(test), length(train)+length(test), train, test)
+    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{<:Picture}, test::AbstractVector{<:Picture}) = new{T}(ratio, n, train, test)
+    TrainTestSplit(train::AbstractVector{<:Picture}, test::AbstractVector{<:Picture}) = new{T}(length(train)//length(test), length(train)+length(test), train, test)
     function TrainTestSplit(pics::AbstractVector{Picture{T}}, train_to_test_ratio::Rational, shuffle_pics::Bool=true) where {T<:Real}
         if shuffle_pics
             pics = pics[shuffle(eachindex(pics))]
@@ -111,7 +111,7 @@ end
 
 using NearestNeighbors
 import NearestNeighbors: knn
-function knn(train_pics::Vector{Picture{T}}, test_pics::Vector{Picture{T}}; k::Int, tree=BruteTree, metric=Euclidean(), leafsize::Int=10) where {T<:Real}
+function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean(), leafsize::Int=10)
     if tree == BruteTree
         mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
     else
@@ -142,7 +142,7 @@ knn_acc(train::Vector{<:Picture}, test::Vector{<:Picture}; kwargs...) = knn_acc(
 Shuffle `pics` ratio.num + ratio.den times, make a TrainTestSplit for each, and calculate
 the mean and standard deviation of the classification accuracy of each.
 """
-function knn_acc_crossvalidate(pics::Vector{Picture{T}}, ratio::Rational = 9//1) where {T<:Real}
+function knn_acc_crossvalidate(pics::Vector{<:Picture}, ratio::Rational = 9//1)
 	n_runs = ratio.num + ratio.den
 	temp_TTSs = [TrainTestSplit(pics, ratio) for _ in 1:n_runs]
     x = [knn_acc(tts, k=3) for tts in temp_TTSs]
@@ -160,8 +160,8 @@ using StatsBase
 Return the data of all pictures in `pics`.
 A column in the returned Matrix represents a single picture.
 """
-datamat(pics::Vector{Picture{T}}) where {T<:Real} = hcat(getfield.(pics, :data)...)
-datamat(tts::TrainTestSplit{T}) where {T<:Real} = (train=datamat(tts.train), test=datamat(tts.test))
+datamat(pics::Vector{<:Picture}) = hcat(getfield.(pics, :data)...)
+datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
 
 function remove_constant(m::AbstractMatrix)
     bad_row_inds = Int64[]
@@ -175,7 +175,7 @@ function remove_constant(m::AbstractMatrix)
     return reduced_data
 end
 
-function remove_constant(pics::Vector{Picture{T}}) where {T<:Real}
+function remove_constant(pics::Vector{<:Picture})
     datatogether = datamat(pics)
     reduced_datamat = remove_constant(datatogether)
     return [Picture(pics[i].ID, pics[i].class, reduced_datamat[:, i]) for i in eachindex(pics)]
@@ -207,7 +207,7 @@ end
 Z-score normalize the data of a picture `p`.
 """
 normalize(p::Picture) = Picture(p.ID, p.class, (p.data .- mean(p.data))/std(p.data))
-function normalize(pics::Vector{Picture{T}}) where {T<:Real}
+function normalize(pics::Vector{<:Picture})
     alldata = datamat(pics) 
     μ, σ = alldata|> flatten|>mean, alldata|> flatten|>std
     normed_data = (alldata .- μ) ./σ
@@ -217,12 +217,36 @@ end
 using ImageFiltering
 gaussian_filter(p::Picture, σ) = Picture(p.ID, p.class, imfilter(p.data|>unflatten, Kernel.gaussian(σ))|>flatten)
 
+
 using Distances
 #* Allow calculation of distance between two pictures:
-
 for M in (Distances.metrics..., Distances.weightedmetrics...)
     @eval @inline (dist::$M)(a::Picture, b::Picture) = Distances._evaluate(dist, a.data, b.data, Distances.parameters(dist))
 end
 
+"""
+    map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
+
+Compute the labels of a dendrogram.
+`ordered_labels` is the ordered classes of the objects that have been clustered.
+`cluster` is the cluster that has been made by `hclust()`.
+
+# Example:
+plt2 = StatsPlots.plot(h_cluster_322)
+ordered_labels = repeat(0:9, 5) |> sort
+tick_labels = map_labels(ordered_labels, h_cluster_322)
+
+StatsPlots.xticks!(h_cluster_322.order|>eachindex, tick_labels)
+plt2
+"""
+function map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
+    output = Vector{String}(undef, length(ordered_labels))
+    for i in eachindex(output)
+        generated_label = cluster.order[i]
+        real_label = ordered_labels[generated_label]
+        output[i] = real_label |> string
+    end
+    return output
+end
 
 @info "utils.jl included"
