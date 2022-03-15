@@ -222,4 +222,29 @@ for M in (Distances.metrics..., Distances.weightedmetrics...)
     @eval @inline (dist::$M)(a::Picture, b::Picture) = Distances._evaluate(dist, a.data, b.data, Distances.parameters(dist))
 end
 
+"""
+    map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
+
+Compute the labels of a dendrogram.
+`ordered_labels` is the ordered classes of the objects that have been clustered.
+`cluster` is the cluster that has been made by `hclust()`.
+
+# Example:
+plt2 = StatsPlots.plot(h_cluster_322)
+ordered_labels = repeat(0:9, 5) |> sort
+tick_labels = map_labels(ordered_labels, h_cluster_322)
+
+StatsPlots.xticks!(h_cluster_322.order|>eachindex, tick_labels)
+plt2
+"""
+function map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
+    output = Vector{String}(undef, length(ordered_labels))
+    for i in eachindex(output)
+        generated_label = cluster.order[i]
+        real_label = ordered_labels[generated_label]
+        output[i] = real_label |> string
+    end
+    return output
+end
+
 @info "utils.jl included"

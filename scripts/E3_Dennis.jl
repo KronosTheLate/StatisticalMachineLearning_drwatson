@@ -30,16 +30,18 @@ end
 ##?  3.2.1 Show a low level dendrogram containing 5 instances of each digit
 #?( one person ).
 
+import StatsPlots  ##? Import does not define stuff from StatsPlots, but makes StatsPlots.plot available. Allows simultaneous use of Makie
 
 
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
 numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
 
-pictures_oneperson = person(i)
+pictures_oneperson = person(13)
 pictures_oneperson_selection = [filter(p->p.class==i, pictures_oneperson)[1:8] for i in 0:9] |> x->vcat(x...)
-linkage = :ward  #* could be :single, :average, :complete, :ward
+
 let pics = pictures_oneperson_selection
+    linkage = :ward  #* could be :single, :average, :complete, :ward
     n = length(pics)
     pic_dists = Matrix{Float64}(undef, n, n)
     for i in 1:n
@@ -48,14 +50,13 @@ let pics = pictures_oneperson_selection
             pic_dists[i, j] = pic_dists[j, i] = the_dist
         end
     end
-    global h_cluster = hclust(pic_dists; linkage)
+    h_cluster = hclust(pic_dists; linkage)
+    plt = StatsPlots.plot(h_cluster, title="Linkage = $linkage", size=(1920÷2, 1080÷2))
+    tick_labels = map_labels(pictures_oneperson_selection.class, StatsPlots.xticks(plt)[1][2])
+    StatsPlots.xticks!(StatsPlots.xticks(plt)[1][1], tick_labels)
+    plt
 end
 
-import StatsPlots  ##? Import does not define stuff from StatsPlots, but makes StatsPlots.plot available. Allows simultaneous use of Makie
-plt = StatsPlots.plot(h_cluster, title="Linkage = $linkage", size=(1920÷2, 1080÷2))
-tick_labels = [pictures_oneperson_selection[i].class|>string for i in parse.(Int64, StatsPlots.xticks(plt)[1][2])]
-StatsPlots.xticks!(StatsPlots.xticks(plt)[1][1], tick_labels)
-plt
 
 #! Conclusion - the hierarchical clustering does get several things right, but it is not impressive.
 
@@ -64,41 +65,40 @@ plt
 #?   as done in 3.1.1, and perform hierarchical clustering to show a low 
 #?   level dendrogram of this (one person).
 
+#* Splitting pictures from 1 person into 10 vectors, each for a seperate digit.
+picss_batched_322 =  batch(person(13), 10, false)
+
+#* Finding 5 k-means clusters  for each
+clusters = [kmeans(picss_batched_322[i]|>datamat, 5) for i in 1:10]
+
+#* Putting the centers of the clusters into the same matrix
+centers = hcat(getfield.(clusters, :centers)...)
+
+#* Computing the hclusters, plotting the dendrogram
+let
+    linkage = :ward  #* could be :single, :average, :complete, :ward
+    n = size(centers, 2)
+    dists = Matrix{Float64}(undef, n, n)
+    for i in 1:n
+        for j in 1:i
+            the_dist = euclidean(centers[:, i], centers[:, j])
+            dists[i, j] = dists[j, i] = the_dist
+        end
+    end
+    h_cluster_322 = hclust(dists; linkage)
+    plt = StatsPlots.plot(h_cluster_322, title="Linkage = $linkage", size=(1920÷2, 1080÷2), label="", legend=true)
+    tick_labels = map_labels(repeat(0:9, 5) |> sort, h_cluster_322)
+    StatsPlots.xticks!(h_cluster_322.order|>eachindex, tick_labels)
+    StatsPlots.hline!([+(reverse(h_cluster_322.heights)[9:10]...)/2], label="Split in 10")
+    plt
+end
+
+
 
 ##?  3.2.3 Discuss the results and relate them to the cross validation
 #?   tables from k-NN classification.
-
-
-function treepositions(hc::Hclust, useheight::Bool, orientation=:vertical)
-
-    order = StatsBase.indexmap(hc.order)
-    nodepos = Dict(-i => (float(order[i]), 0.0) for i in hc.order)
-
-    xs = Array{Float64}(undef, 4, size(hc.merges, 1))
-    ys = Array{Float64}(undef, 4, size(hc.merges, 1))
-
-    for i in 1:size(hc.merges, 1)
-        x1, y1 = nodepos[hc.merges[i, 1]]
-        x2, y2 = nodepos[hc.merges[i, 2]]
-
-        xpos = (x1 + x2) / 2
-        ypos = useheight ?  hc.heights[i] : (max(y1, y2) + 1)
-        
-        nodepos[i] = (xpos, ypos)
-        xs[:, i] .= [x1, x1, x2, x2]
-        ys[:, i] .= [y1, ypos, ypos, y2]
-    end
-    if orientation == :horizontal
-        return ys, xs
-    else
-        return xs, ys
-    end
-end
-
-xs, ys = treepositions(h_cluster, true)
-xs
-ys
-
+#* It looks like the clustering is pretty poor - most numbers are not put into the sensible clusters
+#* From what I can see, clustering should DRASTICALLY make preformance worse.
 
 #=
 3.1: K-means clustering
