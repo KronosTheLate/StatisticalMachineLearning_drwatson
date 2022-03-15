@@ -52,7 +52,7 @@ let pics = pictures_oneperson_selection
     end
     h_cluster = hclust(pic_dists; linkage)
     plt = StatsPlots.plot(h_cluster, title="Linkage = $linkage", size=(1920÷2, 1080÷2))
-    tick_labels = map_labels(pictures_oneperson_selection.class, StatsPlots.xticks(plt)[1][2])
+    tick_labels = map_labels(pictures_oneperson_selection.class, h_cluster)
     StatsPlots.xticks!(StatsPlots.xticks(plt)[1][1], tick_labels)
     plt
 end
