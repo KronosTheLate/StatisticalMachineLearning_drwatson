@@ -116,12 +116,8 @@ end
 
 using NearestNeighbors
 import NearestNeighbors: knn
-function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean(), leafsize::Int=10)
-    if tree == BruteTree
-        mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
-    else
-        mytree = tree(hcat(getfield.(train_pics, :data)...), metric; leafsize)
-    end
+function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+    mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
     return knn(mytree, hcat(getfield.(test_pics, :data)...), k, true)
 end
 knn(tts::TrainTestSplit{<:Real}; kwargs...) = knn(tts.train, tts.test; kwargs...)

@@ -116,6 +116,13 @@ classify(nn_inds, trainclasses(tts_33))
 
 ##
 function knn_stats(tts::TrainTestSplit{<:Real}; tiebreaker = rand, l = 1, kwargs...)
+    let tts = tts_33
+        tiebreaker = rand
+        k = 1
+        l = 1
+        tree = BruteTree
+        metric = Euclidean()
+        leafsize = 1
     inds, _ = knn(tts.train, tts.test; kwargs...)
 	preds = classify(inds, trainclasses(tts); tiebreaker, l)
     n_preds = length(preds)
