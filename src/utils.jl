@@ -254,7 +254,7 @@ function map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
 end
 
 import Base: show
-using PrettyTables
+using PrettyTables, EvalMetrics
 function show(io::IO, cm::ConfusionMatrix)
     pretty_table(io,
     linebreaks=true,
