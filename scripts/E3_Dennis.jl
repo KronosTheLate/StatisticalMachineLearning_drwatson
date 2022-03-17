@@ -115,20 +115,21 @@ trainclasses(tts_33)
 classify(nn_inds, trainclasses(tts_33))
 
 ##
-function knn_stats(tts::TrainTestSplit{<:Real}; tiebreaker = rand, l = 1, kwargs...)
-    let tts = tts_33
-        tiebreaker = rand
-        k = 1
-        l = 1
-        tree = BruteTree
-        metric = Euclidean()
-        leafsize = 1
-    inds, _ = knn(tts.train, tts.test; kwargs...)
+# function knn_stats(tts::TrainTestSplit{<:Real}; tiebreaker = rand, l = 1, kwargs...)
+function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
+    inds, _ = knn(tts.train, tts.test; k, tree, metric)
 	preds = classify(inds, trainclasses(tts); tiebreaker, l)
-    n_preds = length(preds)
-    n_correct = count(==(true), preds .== testclasses(tts))
-	return mean(preds .== testclasses(tts))
+    return [ConfusionMatrix(OneVsRest(i, preds), testclasses(tts), preds) for i in 0:9]
 end
+CMs(tts_33, k=1)
+
+using EvalMetrics
+preds = [0, 0, 0, 0, 1, 1, missing, 1, missing]
+truths = [0, 0, 0, 0, 1, 1, 0,      0,     0]
+inds_missings = findall(ismissing, preds)
+preds_filtered = deleteat!(copy(preds), inds_missings) .|> identity
+truths_filtered = deleteat!(copy(truths), inds_missings)
+cm = ConfusionMatrix(OneVsRest(0, preds_filtered), truths_filtered, preds_filtered)
 
 
 #ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.

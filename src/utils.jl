@@ -17,6 +17,7 @@ struct Picture{T<:Real}
     end
     Picture(a::Int, b::Int, c::Vector{<:Real}) = new{eltype(c)}(a, b, c)
 end
+
 import Base: getproperty
 getproperty(x::Vector{<:Picture}, f::Symbol) = getproperty.(x, f)
 
@@ -43,6 +44,7 @@ struct TrainTestSplit{T<:Real}
         return new{T}(train_to_test_ratio, length(pics), trainpics, testpics)
     end
 end
+
 testclasses(tts::TrainTestSplit) = getfield.(tts.test, :class)
 trainclasses(tts::TrainTestSplit) = getfield.(tts.train, :class)
 
@@ -63,13 +65,13 @@ function unflatten(x::AbstractArray)
     end
     
 end
+
 function visualize_picture(data::AbstractMatrix, colormap::Symbol=:viridis)
     fig, ax = heatmap(data|>reverse|>x->reverse(x, dims=1), figure=(resolution=(400, 400),); colormap)
     hidedecorations!(ax)
     fig
 end
 visualize_picture(data::AbstractVector, colormap::Symbol=:viridis) = visualize_picture(unflatten(data), colormap)
-
 function visualize_picture(p::Picture, colormap::Symbol=:viridis)
     fig, ax = heatmap(unflatten(p.data)|>reverse|>x->reverse(x, dims=1), figure=(resolution=(400, 400),),
         axis=(title="Student ID: $(p.ID|>Int64)\nGround truth: $(p.class|>Int64)", ); colormap
@@ -77,7 +79,6 @@ function visualize_picture(p::Picture, colormap::Symbol=:viridis)
     hidedecorations!(ax)
     fig
 end
-
 
 """
     classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}; tiebreaker=rand, possible_classes=unique(train_classes))
@@ -112,7 +113,6 @@ end
 function classify(neighbor_inds::Vector{Vector{Int}}, train_classes::AbstractVector{Int}; kwargs...)
     [classify(neighbor_inds[i], train_classes; kwargs...) for i in eachindex(neighbor_inds)]
 end
-
 
 using NearestNeighbors
 import NearestNeighbors: knn
@@ -149,7 +149,6 @@ end
 
 
 
-
 using MultivariateStats
 using StatsBase
 """
@@ -161,6 +160,13 @@ A column in the returned Matrix represents a single picture.
 datamat(pics::Vector{<:Picture}) = hcat(getfield.(pics, :data)...)
 datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
 
+"""
+    remove_constant(m::AbstractMatrix)
+    remove_constant(pics::Vector{<:Picture})
+
+Return a matrix or vector of pictures with pixel 
+values which are the same for all pictures removed.
+"""
 function remove_constant(m::AbstractMatrix)
     bad_row_inds = Int64[]
     all_row_inds = 1:size(m, 1) |> Vector
@@ -172,7 +178,6 @@ function remove_constant(m::AbstractMatrix)
     reduced_data = m[deleteat!(all_row_inds, bad_row_inds), :]
     return reduced_data
 end
-
 function remove_constant(pics::Vector{<:Picture})
     datatogether = datamat(pics)
     reduced_datamat = remove_constant(datatogether)
@@ -198,6 +203,7 @@ function batch(v::AbstractVector, n_batches::Int, shuffle_pics=true)
     sectioned_inds = [inds[x] for x in [batchsize*(i-1)+1:batchsize*i for i in 1:n_batches]]
     return [v[ind] for ind in sectioned_inds]
 end
+
 """
     normalize(p::Picture) = Picture(p.ID, p.class, (p.data .- mean(p.data))/std(p.data))
     normalize(pics::Vector{Picture})
@@ -245,6 +251,22 @@ function map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
         output[i] = real_label |> string
     end
     return output
+end
+
+import Base: show
+using PrettyTables
+function show(io::IO, cm::ConfusionMatrix)
+    pretty_table(io,
+    linebreaks=true,
+    alignment=:C,
+    body_hlines = [1, 2, 3],
+    header = ([" "                    "Actual positives" "Actual negatives"],),
+        [
+            "Prediced\npositives"        cm.tp          cm.fp
+            "Prediced\nnegatives"        cm.fn          cm.tn
+            " "                         cm.p           cm.n
+        ]
+    )
 end
 
 @info "utils.jl included"

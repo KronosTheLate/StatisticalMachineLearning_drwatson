@@ -42,6 +42,23 @@ version = "1.0.1"
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[deps.BibInternal]]
+git-tree-sha1 = "3a760b38ba8da19e64d29244f06104823ff26f25"
+uuid = "2027ae74-3657-4b95-ae00-e2f7d55c3e64"
+version = "0.3.4"
+
+[[deps.BibParser]]
+deps = ["BibInternal", "DataStructures", "Dates", "JSONSchema", "YAML"]
+git-tree-sha1 = "f24884311dceb5f8eafe11809b6f1d867b489a46"
+uuid = "13533e5b-e1c2-4e57-8cef-cac5e52f6474"
+version = "0.2.1"
+
+[[deps.Bibliography]]
+deps = ["BibInternal", "BibParser", "DataStructures", "Dates", "YAML"]
+git-tree-sha1 = "e9596db31cad51d81d4d6ead38459a302c1eb610"
+uuid = "f1be7e48-bf82-45af-a471-ae754a193061"
+version = "0.2.17"
+
 [[deps.Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
@@ -526,6 +543,12 @@ git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.3"
 
+[[deps.JSONSchema]]
+deps = ["HTTP", "JSON", "URIs"]
+git-tree-sha1 = "733e602e31a83377fc22b723a89ff0f7db417c3c"
+uuid = "7d188eb4-7ad8-530c-ae41-71a32a6d4692"
+version = "1.0.0"
+
 [[deps.JpegTurbo_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "b53380851c6e6664204efb2e62cd24fa5c47e4ba"
@@ -824,6 +847,12 @@ version = "0.40.1+0"
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
+[[deps.PkgCite]]
+deps = ["BibParser", "Bibliography", "DataStructures", "HTTP", "InteractiveUtils", "Pkg"]
+git-tree-sha1 = "f022debed64ef35fbf6c7d3c13e44fc06ab47c0d"
+uuid = "50d0efc5-baaf-4329-a409-faca2d9bd902"
+version = "0.1.2"
+
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Requires", "Statistics"]
 git-tree-sha1 = "a3a964ce9dc7898193536002a6dd892b1b5a6f1d"
@@ -1041,6 +1070,12 @@ git-tree-sha1 = "4d9c69d65f1b270ad092de0abe13e859b8c55cad"
 uuid = "f3b207a7-027a-5e70-b257-86293d7955fd"
 version = "0.14.33"
 
+[[deps.StringEncodings]]
+deps = ["Libiconv_jll"]
+git-tree-sha1 = "50ccd5ddb00d19392577902f0079267a72c5ab04"
+uuid = "69024149-9ee7-55f6-a4c4-859efe599b68"
+version = "0.3.5"
+
 [[deps.StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
 git-tree-sha1 = "57617b34fa34f91d536eb265df67c2d4519b8b98"
@@ -1116,6 +1151,12 @@ deps = ["Dates", "Downloads", "InlineStrings", "LazyArtifacts", "Mocking", "Prin
 git-tree-sha1 = "2d4b6de8676b34525ac518de36006dc2e89c7e2e"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 version = "1.7.2"
+
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "d60b0c96a16aaa42138d5d38ad386df672cb8bd8"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.16"
 
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]
@@ -1318,6 +1359,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "79c31e7844f6ecf779705fbc12146eb190b7d845"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
 version = "1.4.0+3"
+
+[[deps.YAML]]
+deps = ["Base64", "Dates", "Printf", "StringEncodings"]
+git-tree-sha1 = "3c6e8b9f5cdaaa21340f841653942e1a6b6561e5"
+uuid = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
+version = "0.4.7"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
