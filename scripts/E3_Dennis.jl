@@ -23,7 +23,11 @@ else
     download("https://nextcloud.sdu.dk/index.php/s/Zzjcqjopy5cTawn/download/data_33.Rdata", datadir("ciphers33.RData"))
     ciphers = load(datadir("ciphers33.RData"))["ciphers"]
 end
+using BenchmarkHistograms
 
+pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
+person(ID) = filter(x -> x.ID == ID, pictures)
+numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
 ##!======================================================!##
 
 #?  3.2: Hierarchical clustering
@@ -33,9 +37,7 @@ end
 import StatsPlots  ##? Import does not define stuff from StatsPlots, but makes StatsPlots.plot available. Allows simultaneous use of Makie
 
 
-pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
-person(ID) = filter(x -> x.ID == ID, pictures)
-numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
+
 
 pictures_oneperson = person(13)
 pictures_oneperson_selection = [filter(p->p.class==i, pictures_oneperson)[1:8] for i in 0:9] |> x->vcat(x...)
@@ -104,6 +106,23 @@ end
 
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
+using EvalMetrics
+pics_33 = pictures[1:10:end]
+tts_33 = TrainTestSplit(pics_33, 1//1)
+nn_inds, _ = knn(tts_33, k=1)
+nn_inds
+trainclasses(tts_33)
+classify(nn_inds, trainclasses(tts_33))
+
+##
+function knn_stats(tts::TrainTestSplit{<:Real}; tiebreaker = rand, l = 1, kwargs...)
+    inds, _ = knn(tts.train, tts.test; kwargs...)
+	preds = classify(inds, trainclasses(tts); tiebreaker, l)
+    n_preds = length(preds)
+    n_correct = count(==(true), preds .== testclasses(tts))
+	return mean(preds .== testclasses(tts))
+end
+
 
 #ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 
@@ -119,5 +138,3 @@ end
 
 #ToDo 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the available datasets (disjunct). Represent the training data as a number of cluster centroids and compare performance, try multiple cluster sizes.
 
-
-@time knn_acc(TrainTestSplit(pictures[1:10:end], 1//1), k=1)

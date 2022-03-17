@@ -81,18 +81,22 @@ end
 
 """
     classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}; tiebreaker=rand, possible_classes=unique(train_classes))
+    classify(neighbor_inds::Vector{Vector{Int}}, args...; kwargs...)
 
 kwargs:
 `tiebreaker` is 
-1) a function that takes a tuple of candidates and returns a value, or 
+1) a function that takes the tuple of candidates and returns a value, or 
 2) a value that is returned upon a tie.
 """
-function classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}, possible_classes=unique(train_classes); tiebreaker=rand)
+function classify(neighbor_inds::AbstractVector{Int}, train_classes::AbstractVector{Int}; tiebreaker=rand, l::Int=1)
+    possible_classes = unique(train_classes)
     neighbor_classes = train_classes[neighbor_inds]
-    my_counts = [count(==(possible_classes[i]), neighbor_classes) for i in eachindex(possible_classes)]
+    my_counts = [count(==(psbl_cls), neighbor_classes) for psbl_cls in possible_classes]
     A = [possible_classes my_counts]
     sorted_counts = sortslices(A, dims=1, by=x->x[2], rev=true)
-    if sorted_counts[1, 2] == sorted_counts[2, 2]
+    if sorted_counts[begin, end] < l
+        return missing
+    elseif sorted_counts[1, 2] == sorted_counts[2, 2]
         inds = [sorted_counts[i, 2] == sorted_counts[1, 2] for i in 1:size(sorted_counts, 1)]
         candidates_of_equal_count = sorted_counts[inds, :][:, 1]
         if tiebreaker isa Function
@@ -105,9 +109,10 @@ function classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}, possib
         return sorted_counts[1, 1]
     end
 end
-function classify(neighbor_inds::Vector{Vector{Int}}, args...; kwargs...)
-    [classify(neighbor_inds[i], args...; kwargs...) for i in eachindex(neighbor_inds)]
+function classify(neighbor_inds::Vector{Vector{Int}}, train_classes::AbstractVector{Int}; kwargs...)
+    [classify(neighbor_inds[i], train_classes; kwargs...) for i in eachindex(neighbor_inds)]
 end
+
 
 using NearestNeighbors
 import NearestNeighbors: knn
@@ -121,17 +126,14 @@ function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int
 end
 knn(tts::TrainTestSplit{<:Real}; kwargs...) = knn(tts.train, tts.test; kwargs...)
 
-
-
-
 """
     knn_acc(tts::TrainTestSplit{<:Real}; tiebreaker=rand, kwargs...)
 
 `kwargs...` are passed on as `k::Int, tree=BruteTree, metric=Euclidean()`
 """
-function knn_acc(tts::TrainTestSplit{<:Real}; tiebreaker=rand, kwargs...)
-	inds, _ = knn(tts.train, tts.test; kwargs...)
-	preds = classify(inds, trainclasses(tts); tiebreaker)
+function knn_acc(tts::TrainTestSplit{<:Real}; k::Int, l::Int=1, tree=BruteTree, tiebreaker=rand, metric=Euclidean())
+    inds, _ = knn(tts.train, tts.test; k, tree, metric)
+	preds = classify(inds, trainclasses(tts); l, tiebreaker)
 	return mean(preds .== testclasses(tts))
 end
 knn_acc(train::Vector{<:Picture}, test::Vector{<:Picture}; kwargs...) = knn_acc(TrainTestSplit(train, test), kwargs...)

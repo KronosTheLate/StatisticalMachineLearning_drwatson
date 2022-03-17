@@ -255,6 +255,12 @@ git-tree-sha1 = "3f3a2501fa7236e9b911e0f7a588c657e822bb6d"
 uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
 version = "2.2.3+0"
 
+[[deps.EvalMetrics]]
+deps = ["DocStringExtensions", "RecipesBase", "Reexport", "Statistics", "StatsBase"]
+git-tree-sha1 = "08edf9183b70a0a8c075e6bb855561967c84abac"
+uuid = "251d5f9e-10c1-4699-ba24-e0ad168fa3e4"
+version = "0.2.1"
+
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "ae13fcbc7ab8f16b0856729b050ef0c446aa3492"
