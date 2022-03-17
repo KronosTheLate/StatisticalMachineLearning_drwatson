@@ -161,13 +161,36 @@ end
 begin #? plotting
     axis = (width=900, height=800)
     plt = AlgebraOfGraphics.data(results) * mapping(:prec=>"Precision", :rec=>"Recall")
-    plt *= mapping(size=:k)
-    plt *= mapping(marker=:l)
+    plt *= mapping(color=:k)
+    plt *= mapping(marker=:l=>sorter(Vector(1:13) .|> string))
 
     draw(plt; axis)
 end
 
 #ToDo 3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
+begin
+    new_results = results|>copy
+    sort!(new_results, :f1)
+    bad_inds = Int64[]
+    represented_ks = Int64[]
+    for i in axes(new_results, 1)
+        if new_results[i, :k] ∈ represented_ks
+            push!(bad_inds, i)
+        else
+            push!(represented_ks, new_results[i, :k])
+        end
+    end
+    new_results = new_results[axes(new_results, 1) .∉ [bad_inds], :] .|> identity
+    begin #? plotting
+        axis = (width=900, height=800)
+        plt = AlgebraOfGraphics.data(new_results) * mapping(:k=>"k", :f1=>"Maximal F1 score")
+        plt *= mapping(color=:l=>sorter(Vector(1:13) .|> string))
+    
+        draw(plt; axis)
+    end
+    current_axis().xticks = 1:13
+    current_figure()
+end
 
 #ToDo 3.3.3 Discuss the results from 3.3.1 and 3.3.2. What do you think would be the most important part of a digit recognition system. Precision or recall? Please discuss in what situations would the different factors be more important?
 
