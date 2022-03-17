@@ -28,6 +28,7 @@ using BenchmarkHistograms
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
 numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
+
 ##!======================================================!##
 
 #?  3.2: Hierarchical clustering
@@ -107,15 +108,15 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
-pics_33 = pictures[1:10:end]
+pics_33 = pictures[1:50:end]
 tts_33 = TrainTestSplit(pics_33, 1//1)
 nn_inds, _ = knn(tts_33, k=1)
 nn_inds
 trainclasses(tts_33)
 classify(nn_inds, trainclasses(tts_33))
 
-##
-# function knn_stats(tts::TrainTestSplit{<:Real}; tiebreaker = rand, l = 1, kwargs...)
+## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
+## @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
     inds, _ = knn(tts.train, tts.test; k, tree, metric)
 	preds = classify(inds, trainclasses(tts); tiebreaker, l)
@@ -124,7 +125,7 @@ function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Eucli
     n_missings  = length(inds_missings)
     preds_filtered = deleteat!(copy(preds), inds_missings) .|> identity
     truths_filtered = deleteat!(copy(truths), inds_missings)
-    return [(; k, l, positive_label=i, n_missings, cm=ConfusionMatrix(OneVsRest(i, preds_filtered), truths_filtered, preds_filtered)) for i in 0:9]
+    return [(; k, l, positive_label=i, n_missings, cm=ConfusionMatrix(OneVsRest(i, deleteat!(0:9|>Vector, i+1)), truths_filtered, preds_filtered)) for i in 0:9]
 end
 cms = CMs(tts_33, k=5, l=3)
 cms
@@ -136,9 +137,32 @@ function CMs_summed(tts; kwargs...)
     return (;k=cms[1].k, l=cms[1].l, n_missings=n_missings_summed, summed_cm)
 end
 
-cms = CMs_summed(tts_33, k=5, l=3)
+begin
+    cms = []
+    ks = 1:13
+    for k in ks
+        for l in 1:k
+            push!(cms, CMs_summed(tts_33; k, l))
+        end
+    end
+    cms
+end
+results = DataFrame(k = [], l = [], prec = [], rec = [], n_missings = [])
+cms[1]
+for cm in cms
+    push!(results, [cm.k, cm.l, cm.summed_cm|>precision, cm.summed_cm|>recall, cm.n_missings])
+end
+results
 
-#ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
+using AlgebraOfGraphics
+set_aog_theme!()
+using GLMakie
+begin #? plotting
+    axis = (width=400, height=400)
+    plt = AlgebraOfGraphics.data(results) * mapping(:prec=>"Precision", :rec=>"Recall", color=:k, marker=:l)
+
+    draw(plt; axis)
+end
 
 #ToDo 3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
 
@@ -151,4 +175,3 @@ cms = CMs_summed(tts_33, k=5, l=3)
 #ToDo 3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
 
 #ToDo 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the available datasets (disjunct). Represent the training data as a number of cluster centroids and compare performance, try multiple cluster sizes.
-
