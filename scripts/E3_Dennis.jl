@@ -126,18 +126,17 @@ function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Eucli
     truths_filtered = deleteat!(copy(truths), inds_missings)
     return [(; k, l, positive_label=i, n_missings, cm=ConfusionMatrix(OneVsRest(i, preds_filtered), truths_filtered, preds_filtered)) for i in 0:9]
 end
-function CMs_summed(tts; kwargs...)
-    inds, _ = knn(tts.train, tts.test; k, tree, metric)
-	preds = classify(inds, trainclasses(tts); tiebreaker, l)
-    truths = testclasses(tts)
-    inds_missings = findall(ismissing, preds)
-    n_missings  = length(inds_missings)
-    preds_filtered = deleteat!(copy(preds), inds_missings) .|> identity
-    truths_filtered = deleteat!(copy(truths), inds_missings)
-    return [(; k, l, positive_label=i, n_missings, cm=ConfusionMatrix(OneVsRest(i, preds_filtered), truths_filtered, preds_filtered)) for i in 0:9]
-end
 cms = CMs(tts_33, k=5, l=3)
 cms
+
+function CMs_summed(tts; kwargs...)
+    cms = CMs(tts; kwargs...)
+    summed_cm = sum(getfield.(cms, :cm))
+    n_missings_summed = sum(getfield.(cms, :n_missings))
+    return (;k=cms[1].k, l=cms[1].l, n_missings=n_missings_summed, summed_cm)
+end
+
+cms = CMs_summed(tts_33, k=5, l=3)
 
 #ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 
