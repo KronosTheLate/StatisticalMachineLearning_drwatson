@@ -58,19 +58,19 @@ c = counts(R) # get the cluster sizes
 M = R.centers # get the cluster centers
 
 
-colormap = :flag_no
+colormap = :flag_ua
 
 fig = Figure()
-heatmap(fig[1,1],unflatten( M[:,1] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "1, number of occurences $(c[1])",))
-heatmap(fig[1,2],unflatten( M[:,2] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "2 number of occurences $(c[2])",))
-heatmap(fig[1,3],unflatten( M[:,3] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "3 number of occurences $(c[3])",))
-heatmap(fig[1,4],unflatten( M[:,4] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "4 number of occurences $(c[4])",))
-heatmap(fig[1,5],unflatten( M[:,5] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "5 number of occurences $(c[5])",))
-heatmap(fig[2,1],unflatten( M[:,6] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "6, number of occurences $(c[6])",))
-heatmap(fig[2,2],unflatten( M[:,7] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "7, number of occurences $(c[7])",))
-heatmap(fig[2,3],unflatten( M[:,8] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "8, number of occurences $(c[8])",))
-heatmap(fig[2,4],unflatten( M[:,9] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "9, number of occurences $(c[9])",))
-heatmap(fig[2,5],unflatten( M[:,10] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "10, number of occurences $(c[10])",))
+heatmap(fig[1,1],unflatten( M[:,1] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 1, # occurences $(c[1])",))
+heatmap(fig[1,2],unflatten( M[:,2] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 2, # occurences $(c[2])",))
+heatmap(fig[1,3],unflatten( M[:,3] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 3, # occurences$(c[3])",))
+heatmap(fig[1,4],unflatten( M[:,4] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 4, # occurences $(c[4])",))
+heatmap(fig[1,5],unflatten( M[:,5] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 5, # occurences $(c[5])",))
+heatmap(fig[2,1],unflatten( M[:,6] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 6, # occurences $(c[6])",))
+heatmap(fig[2,2],unflatten( M[:,7] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 7, # occurences $(c[7])",))
+heatmap(fig[2,3],unflatten( M[:,8] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 8, # occurences $(c[8])",))
+heatmap(fig[2,4],unflatten( M[:,9] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 9, # occurences $(c[9])",))
+heatmap(fig[2,5],unflatten( M[:,10] )|>reverse|>x->reverse(x, dims=1); colormap, axis = (title = "cluster center 10, # occurences $(c[10])",))
 
 #fieldnames(Figure)
 # cb=Colorbar(fig[1:3, 7], limits=extrema(billede1); colormap )
@@ -154,31 +154,60 @@ sca20 = scatter!([1], [TestAcc(cluster_center_matrix(20, 2), person(5), 1)], col
 sca10 = scatter!([1], [TestAcc(cluster_center_matrix(10, 2), person(5), 1)],color=:red)
 sca5 = scatter!([1], [TestAcc(cluster_center_matrix(5, 2), person(5), 1)],color=:green)
 scaOG =scatter!([1], [TestAcc(person(2), person(5), 1)], color=:black)
+ax2  = Axis(fig[2,1])
+sca20T = scatter!([1], [TestAcc(cluster_center_matrix(20, 2), person(2), 1)], color=:blue, marker = :rect)
+sca10T = scatter!([1], [TestAcc(cluster_center_matrix(10, 2), person(2), 1)],color=:red, marker = :rect)
+sca5T = scatter!([1], [TestAcc(cluster_center_matrix(5, 2), person(2), 1)],color=:green, marker = :rect)
+scaOGT =scatter!([1], [TestAcc(person(2), person(2), 1)], color=:black, marker = :rect)
 
-scatter!([2], [TestAcc(cluster_center_matrix(20, 12), person(13), 1)], label = "20 cluster", color=:blue)
-scatter!([2], [TestAcc(cluster_center_matrix(10, 12), person(13), 1)], label = "10 cluster", color=:red)
-scatter!([2], [TestAcc(cluster_center_matrix(5, 12), person(13), 1)], label = "5 cluster", color=:green)
-scatter!([2], [TestAcc(person(12), person(13), 1)], label = "KNN no clustering", color=:black)
+scatter!(ax, [2], [TestAcc(cluster_center_matrix(20, 12), person(13), 1)], label = "20 cluster", color=:blue)
+scatter!(ax, [2], [TestAcc(cluster_center_matrix(10, 12), person(13), 1)], label = "10 cluster", color=:red)
+scatter!(ax, [2], [TestAcc(cluster_center_matrix(5, 12), person(13), 1)], label = "5 cluster", color=:green)
+scatter!(ax, [2], [TestAcc(person(12), person(13), 1)], label = "KNN no clustering", color=:black)
+scatter!(ax2, [2], [TestAcc(cluster_center_matrix(20, 12), person(12), 1)], color=:blue, marker = :rect)
+scatter!(ax2, [2], [TestAcc(cluster_center_matrix(10, 12), person(12), 1)],color=:red, marker = :rect)
+scatter!(ax2, [2], [TestAcc(cluster_center_matrix(5, 12), person(12), 1)],color=:green, marker = :rect)
+scatter!(ax2, [2], [TestAcc(person(12), person(12), 1)], color=:black, marker = :rect)
 
-scatter!([3], [TestAcc(cluster_center_matrix(20, 4), person(8), 1)], label = "20 cluster", color=:blue)
-scatter!([3], [TestAcc(cluster_center_matrix(10, 4), person(8), 1)], label = "10 cluster", color=:red)
-scatter!([3], [TestAcc(cluster_center_matrix(5, 4), person(8), 1)], label = "5 cluster", color=:green)
-scatter!([3], [TestAcc(person(4), person(8), 1)], label = "KNN no clustering", color=:black)
+scatter!(ax, [3], [TestAcc(cluster_center_matrix(20, 4), person(8), 1)], label = "20 cluster", color=:blue)
+scatter!(ax, [3], [TestAcc(cluster_center_matrix(10, 4), person(8), 1)], label = "10 cluster", color=:red)
+scatter!(ax, [3], [TestAcc(cluster_center_matrix(5, 4), person(8), 1)], label = "5 cluster", color=:green)
+scatter!(ax, [3], [TestAcc(person(4), person(8), 1)], label = "KNN no clustering", color=:black)
+scatter!(ax2, [3], [TestAcc(cluster_center_matrix(20, 4), person(4), 1)], color=:blue, marker = :rect)
+scatter!(ax2, [3], [TestAcc(cluster_center_matrix(10, 4), person(4), 1)],color=:red, marker = :rect)
+scatter!(ax2, [3], [TestAcc(cluster_center_matrix(5, 4), person(4), 1)],color=:green, marker = :rect)
+scatter!(ax2, [3], [TestAcc(person(4), person(4), 1)], color=:black, marker = :rect)
+
+scatter!(ax, [4], [TestAcc(cluster_center_matrix(20, 20), person(25), 1)], label = "20 cluster", color=:blue)
+scatter!(ax, [4], [TestAcc(cluster_center_matrix(10, 20), person(25), 1)], label = "10 cluster", color=:red)
+scatter!(ax, [4], [TestAcc(cluster_center_matrix(5, 20), person(25), 1)], label = "5 cluster", color=:green)
+scatter!(ax, [4], [TestAcc(person(20), person(25), 1)], label = "KNN no clustering", color=:black)
+scatter!(ax2, [4], [TestAcc(cluster_center_matrix(20, 20), person(20), 1)], color=:blue, marker = :rect)
+scatter!(ax2, [4], [TestAcc(cluster_center_matrix(10, 20), person(20), 1)],color=:red, marker = :rect)
+scatter!(ax2, [4], [TestAcc(cluster_center_matrix(5, 20), person(20), 1)],color=:green, marker = :rect)
+scatter!(ax2, [4], [TestAcc(person(20), person(20), 1)], color=:black, marker = :rect)
 
 
-scatter!([4], [TestAcc(cluster_center_matrix(20, 20), person(25), 1)], label = "20 cluster", color=:blue)
-scatter!([4], [TestAcc(cluster_center_matrix(10, 20), person(25), 1)], label = "10 cluster", color=:red)
-scatter!([4], [TestAcc(cluster_center_matrix(5, 20), person(25), 1)], label = "5 cluster", color=:green)
-scatter!([4], [TestAcc(person(20), person(25), 1)], label = "KNN no clustering", color=:black)
+# Legend(fig[1:2, 2],
+#    [sca20, sca10, sca5, scaOG, sca20T, sca10T, sca5T, scaOGT],
+#    ["20 clusters test", "10 clusters test", "5 clusters test", "KNN no clustering test", "20 clusters train", "10 clusters train", "5 clusters train", "KNN no clustering train"],
+#    "Trig Functions",
+#    nbanks = 1
+#    )
 
+groupcolor = [sca20, sca10, sca5, scaOG];
+groupshape = [scaOG, scaOGT]
 
-Legend(fig[1, 2],
-    [sca20, sca10, sca5, scaOG],
-    ["20 clusters", "10 clusters", "5 clusters", "KNN no clustering"])
+legends = [Legend(fig[1:2,2],
+[groupcolor, groupshape],
+[["20", "10", "5", "NaN"], ["Test", "Train"]],
+["Number of clusters", "Train or Test"]) for _ in 1:7]
 
-processors = ["2 vs. 1", "12 vs. 13", "4 vs. 8", "20 vs. 25"]
+processors = ["case 1", "case 2", "case 3", "case 4"]
 #sca20.ylabel = "Hello"
-ax.xticks = (1:4, processors)
+ax2.xticks = (1:4, processors)
+hidexdecorations!(ax, grid = false)
+Label(fig[1:2,0], "Accuracy for KNN",rotation = π/2)
 fig
 
 #! seems highly dependet on the people you chose to compare as to which is better... strange. 
@@ -187,21 +216,20 @@ fig
 
  function crossvald(clustersize, clusterperson, testperson, k, rep)
 accSaver = []
-for i in 1:10
+for i in rep
 push!(accSaver, TestAcc(cluster_center_matrix(clustersize, clusterperson), testperson, k);)
 end
 return accSaver
 end
-accSaver |> mean
-accSaver |> var |> √
 
-cl20v21 = crossvald(20, 20 , person(21), 1, 1:50)
-cl12v13 = crossvald(20, 12 , person(13), 1, 1:50)
-cl1v2 = crossvald(20, 1 , person(2), 1, 1:10)
 
-cl20v21_10 = crossvald(10, 20 , person(21), 1, 1:10)
+cl20v21 = crossvald(20, 2 , person(5), 1, 1:10)
+cl12v13 = crossvald(20, 12 , person(13), 1, 1:10)
+cl1v2 = crossvald(20, 4 , person(8), 1, 1:10)
+
+cl20v21_10 = crossvald(10, 2 , person(5), 1, 1:10)
 cl12v13_10 = crossvald(10, 12 , person(13), 1, 1:10)
-cl1v2_10 = crossvald(10, 1 , person(2), 1, 1:10)
+cl1v2_10 = crossvald(10, 4 , person(8), 1, 1:10)
 
 
 
@@ -212,45 +240,80 @@ ax=Axis(fig[1,1])
 
 xs = 1:1:3
 ys1 = [mean(cl20v21), mean(cl12v13), mean(cl1v2)]
-#ys2 = [mean(cl20v21_10), mean(cl12v13_10), mean(cl1v2_10)]
+ys2 = [mean(cl20v21_10), mean(cl12v13_10), mean(cl1v2_10)]
 
 lowerrors = [var(cl20v21)|>√, var(cl12v13)|>√, var(cl1v2)|>√]
 higherrors = [var(cl20v21)|>√, var(cl12v13)|>√, var(cl1v2)|>√]
 
-#lowerrors_10 = [var(cl20v21_10)|>√, var(cl12v13_10)|>√, var(cl1v2_10)|>√]
-#higherrors_10 = [var(cl20v21_10)|>√, var(cl12v13_10)|>√, var(cl1v2_10)|>√]
+lowerrors_10 = [var(cl20v21_10)|>√, var(cl12v13_10)|>√, var(cl1v2_10)|>√]
+higherrors_10 = [var(cl20v21_10)|>√, var(cl12v13_10)|>√, var(cl1v2_10)|>√]
 
 
-errorbars!(xs, ys1, lowerrors, higherrors,
-    color = :green,
+errorbars!(collect(xs) .-0.1, ys1, lowerrors, higherrors,
+    color = :blue,
     whiskerwidth = 10)
 
     
-#errorbars!(xs, ys2, lowerrors_10, higherrors_10,
-#color = :blue,
-#whiskerwidth = 10)
+errorbars!(collect(xs) .+0.1, ys2, lowerrors_10, higherrors_10,
+color = :red,
+whiskerwidth = 10)
 
 # plot position scatters so low and high errors can be discriminated
-sca = scatter!(xs, ys1, color = :green)
-#scatter!(xs, ys2, color = :blue)
-scaOG = scatter!(xs, [TestAcc(person(20), person(21), 1), TestAcc(person(12), person(13), 1), TestAcc(person(1), person(2), 1)],
+sca20 = scatter!(collect(xs) .-0.1, ys1, color = :blue)
+sca10 =scatter!(collect(xs) .+0.1, ys2, color = :red)
+scaOG = scatter!(xs, [TestAcc(person(2), person(5), 1), TestAcc(person(12), person(13), 1), TestAcc(person(4), person(8), 1)],
     color = :black
 )
 
-processors = ["20 vs. 21", "12 vs. 13", "1 vs. 2"]
+processors = ["Case 1", "Case 2", "Case 3"]
 #sca20.ylabel = "Hello"
 ax.xticks = (1:3, processors)
 
 Legend(fig[1, 2],
-    [sca, scaOG],
-    ["20 Clusters", "KNN no clustering"])
+    [sca20, sca10, scaOG],
+    ["20 Clusters", "10 Clusters","NaN"])
 
+Label(fig[1,0], "Accuracy for KNN",rotation = π/2, tellheight = false)
 
 fig
 
 
-##? 
+##?  time functions ----------------------------------------------------------
+using TimerOutputs
 
+# case 1 for 20 clusters
+
+Batched_person12 = [ numbersearch( person(12), i ) |>datamat  for i in 0:9 ];
+test = person(13);
+train = person(12);
+
+
+# R = kmeans(Batched_person12[i], 20; maxiter=200)
+# Mx = R.centers
+to = TimerOutput();
+
+Clustersize = 20
+ #! finder M cluster for person X for 0 til 9
+    temp = []
+    @timeit to "Batching" for i in 1:10
+        @timeit to "Finding 20 clusters" R = kmeans(Batched_person12[i], Clustersize; maxiter=200)
+        @timeit to "Finding centers" M = R.centers
+    push!(temp,M)
+    end
+    #! Sætter dem sammen i en picture sturct
+
+    @timeit to "Reapplying labels" tempfirst = hcat(repeat(2:2,Clustersize), repeat(0:0,Clustersize), temp[1]')
+    for i in 1:9
+    temp2 = hcat(repeat(2:2,Clustersize), repeat(i:i,Clustersize), temp[1+i]')
+    tempfirst = vcat(tempfirst, temp2)
+    end
+    @timeit to "Converting to struct" Mpictures = Picture.(tempfirst |> eachrow)
+
+
+@timeit to "KNN classifying 20 clusters" TestAcc(Mpictures, test, 1)
+@timeit to "KNN classifying" TestAcc(train, test, 1)
+to
+##?
 ##! alt data! 
 
 
