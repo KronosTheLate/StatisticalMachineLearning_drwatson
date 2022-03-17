@@ -260,11 +260,12 @@ function show(io::IO, cm::ConfusionMatrix)
     linebreaks=true,
     alignment=:C,
     body_hlines = [1, 2, 3],
-    header = ([" "                    "Actual positives" "Actual negatives"],),
+    noheader=true,
         [
+            " "                    "Actual\npositives" "Actual\nnegatives"
             "Prediced\npositives"        cm.tp          cm.fp
             "Prediced\nnegatives"        cm.fn          cm.tn
-            " "                         cm.p           cm.n
+            "Total"                      cm.p           cm.n
         ]
     )
 end
