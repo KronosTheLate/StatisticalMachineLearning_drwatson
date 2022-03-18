@@ -108,12 +108,12 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
-pics_33 = pictures[1:10:end]
+pics_33 = pictures[1:1:end]
 tts_33 = TrainTestSplit(pics_33, 99//1)
-using OffsetArrays
+
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
-
+using PrettyTables
 let preds = classify(tts_33; k=3)
     truths = testclasses(tts_33)
     global confusion_matrix = fill(0, (10, 10)) |> Matrix{Union{String, Int}}
@@ -121,11 +121,17 @@ let preds = classify(tts_33; k=3)
     for i in eachindex(truths)
         confusion_matrix[truths[i]+1, preds[i]+1] += 1
     end
+    confusion_matrix_OG = copy(confusion_matrix)
     confusion_matrix = [confusion_matrix; sum(confusion_matrix, dims=1)]
     confusion_matrix = [confusion_matrix sum(confusion_matrix, dims=2)]
-    confusion_matrix
+    confusion_matrix = [[["$i" for i in 0:9]; "Sum"] confusion_matrix]
+    confusion_matrix = [["          Actual\nPredicted  " reshape(["$i" for i in 0:9], (1, 10)) "Sum"]; confusion_matrix]
+    pretty_table(confusion_matrix, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
+    confusion_matrix_OG
 end
 
+###! Below is the old code that gave a straigt line.
+##
 function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
     inds = knn_threaded(tts.train, tts.test; k, tree, metric)
 	preds = classify(inds, trainclasses(tts); tiebreaker, l)
@@ -160,8 +166,7 @@ end
 =#
 # save(datadir("cms_alldata_TTSRatio_99_1.jld2"), Dict("cms"=>cms, ))
 cms = load(datadir("cms_alldata_TTSRatio_99_1.jld2"))["cms"]
-getfield.(cms, :summed_cm) .|> precision
-@which precision(getfield(cms[1], :summed_cm))
+
 ##
 
 begin
