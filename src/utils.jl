@@ -44,6 +44,8 @@ struct TrainTestSplit{T<:Real}
         return new{T}(train_to_test_ratio, length(pics), trainpics, testpics)
     end
 end
+import Base.length
+length(tts::TrainTestSplit) = tts.n
 
 testclasses(tts::TrainTestSplit) = getfield.(tts.test, :class)
 trainclasses(tts::TrainTestSplit) = getfield.(tts.train, :class)

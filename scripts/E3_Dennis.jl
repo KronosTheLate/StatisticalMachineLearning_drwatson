@@ -108,12 +108,12 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
-pics_33 = pictures[1:1:end]
-tts_33 = TrainTestSplit(pics_33, 1//1)
+pics_33 = pictures[1:2:end]
+tts_33 = TrainTestSplit(pics_33, 9//1)
 
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
-using PrettyTables
+using PrettyTables, ProgressMeter
 
 function confmat(tts::TrainTestSplit; kwargs...)
     preds = classify(tts; kwargs...)
@@ -128,7 +128,6 @@ function confmat(tts::TrainTestSplit; kwargs...)
     end
     return confusion_matrix, n_missings
 end
-confmat(tts_33, k=3, l=2)[2]
 
 function print_confmat(cm::AbstractMatrix)
     cm = Matrix{Union{String, Int}}(cm)
@@ -145,7 +144,6 @@ let
     p = Progress(91, 1)
     for k in ks
         for l in 1:k
-            @show k, l
             cm, n_missings = confmat(tts_33; k, l)
             push!(results_33, [k, l, cm, n_missings])
             next!(p)
@@ -153,7 +151,7 @@ let
     end
     results_33
 end
-save(datadir("Results_33.csv"), results_33)
+save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
 13*1 + 13*2 + 
 sum(13 .* 1:13)
 
