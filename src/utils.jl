@@ -159,7 +159,6 @@ function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture
     end
     return output
 end
-@time knn_threaded(trainpics, testpics; k=3)
 
 #=
 """
