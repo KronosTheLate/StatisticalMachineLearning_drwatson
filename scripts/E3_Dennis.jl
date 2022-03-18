@@ -138,6 +138,8 @@ function print_confmat(cm::AbstractMatrix)
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
+results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
+#=
 let
     ks = 1:13
     global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], n_missings = Int[])
@@ -149,11 +151,25 @@ let
             next!(p)
         end
     end
+    save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
     results_33
 end
-save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
-13*1 + 13*2 + 
-sum(13 .* 1:13)
+=#
+import EvalMetrics: accuracy
+function accuracy(cm::AbstractMatrix)
+    @assert size(cm) == (10, 10)
+    sum(cm[i, i] for i in 1:10) / sum(cm, dims=(1, 2))[1]
+end
+accuracy(results_33.cm[1])
+
+
+begin
+    axis = (width=400, height=400)
+    plt = AlgebraOfGraphics.data(results_33) * mapping()
+    draw(plt; axis)
+end
+
+
 
 
 ## Timing
