@@ -109,26 +109,71 @@ end
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
 pics_33 = pictures[1:1:end]
-tts_33 = TrainTestSplit(pics_33, 99//1)
+tts_33 = TrainTestSplit(pics_33, 1//1)
 
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 using PrettyTables
-let preds = classify(tts_33; k=3)
-    truths = testclasses(tts_33)
-    global confusion_matrix = fill(0, (10, 10)) |> Matrix{Union{String, Int}}
-    confusion_matrix
+
+function confmat(tts::TrainTestSplit; kwargs...)
+    preds = classify(tts; kwargs...)
+    truths = testclasses(tts)
+    inds_missings = findall(ismissing, preds)
+    n_missings = length(inds_missings)
+    deleteat!(preds, inds_missings)
+    deleteat!(truths, inds_missings)
+    confusion_matrix = fill(0, (10, 10))
     for i in eachindex(truths)
         confusion_matrix[truths[i]+1, preds[i]+1] += 1
     end
-    confusion_matrix_OG = copy(confusion_matrix)
-    confusion_matrix = [confusion_matrix; sum(confusion_matrix, dims=1)]
-    confusion_matrix = [confusion_matrix sum(confusion_matrix, dims=2)]
-    confusion_matrix = [[["$i" for i in 0:9]; "Sum"] confusion_matrix]
-    confusion_matrix = [["          Actual\nPredicted  " reshape(["$i" for i in 0:9], (1, 10)) "Sum"]; confusion_matrix]
-    pretty_table(confusion_matrix, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
-    confusion_matrix_OG
+    return confusion_matrix, n_missings
 end
+confmat(tts_33, k=3, l=2)[2]
+
+function print_confmat(cm::AbstractMatrix)
+    cm = Matrix{Union{String, Int}}(cm)
+    cm = [cm; sum(cm, dims=1)]
+    cm = [cm sum(cm, dims=2)]
+    cm = [[["$i" for i in 0:9]; "Sum"] cm]
+    cm = [["          Actual\nPredicted  " reshape(["$i" for i in 0:9], (1, 10)) "Sum"]; cm]
+    pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
+end
+
+let
+    ks = 1:13
+    global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], n_missings = Int[])
+    p = Progress(91, 1)
+    for k in ks
+        for l in 1:k
+            @show k, l
+            cm, n_missings = confmat(tts_33; k, l)
+            push!(results_33, [k, l, cm, n_missings])
+            next!(p)
+        end
+    end
+    results_33
+end
+save(datadir("Results_33.csv"), results_33)
+13*1 + 13*2 + 
+sum(13 .* 1:13)
+
+
+## Timing
+let #? 45 seconds
+    pics = pictures[1:10:end]
+    train_ratios = 50:99
+    test_ratios = 100 .- train_ratios
+    global ratios = Rational.(train_ratios, test_ratios)
+    global times = []
+    for ratio in ratios
+        tts = TrainTestSplit(pics, ratio)
+        t = @elapsed knn_threaded(tts, k=1)
+        push!(times, t)
+    end
+end
+
+
+scatter(convert.(Float64, ratios), times.|>identity, axis=(xlabel="Train to Test ratio", ylabel="Time [s]", xscale=log10)); DataInspector(); current_figure()
 
 ###! Below is the old code that gave a straigt line.
 ##

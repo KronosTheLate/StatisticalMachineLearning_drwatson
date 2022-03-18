@@ -30,29 +30,7 @@ pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.c
 
 ##!============================================================================!##
 
-##! SVectors
-
-using NearestNeighbors
-pic = pictures[1].data
-pics = pictures[1:100].data
-tree = BruteTree(hcat(pics...))
-
-const datalength = length(pic)
-
-spic = @SVector [pic[i] for i in 1:datalength]
-spics = [@SVector [pic[i] for i in 1:datalength] for pic in pics]
-stree = BruteTree(spics)
-
-
-Threads.@threads for i in 1:8
-    @show Threads.threadid()
-    @show i
-end
-
-for i in 1:8
-    @show Threads.threadid()
-    @show i
-end
+#
 
 trainpics = rand(pictures, 10000)
 testpics = rand(pictures, 1000)
