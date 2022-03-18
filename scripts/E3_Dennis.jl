@@ -108,13 +108,15 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
-pics_33 = pictures[1:1:end]
+pics_33 = pictures[1:10:end]
 tts_33 = TrainTestSplit(pics_33, 99//1)
 
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
+
+
 function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
-    inds, _ = knn(tts.train, tts.test; k, tree, metric)
+    inds = knn_threaded(tts.train, tts.test; k, tree, metric)
 	preds = classify(inds, trainclasses(tts); tiebreaker, l)
     truths = testclasses(tts)
     inds_missings = findall(ismissing, preds)

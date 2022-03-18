@@ -81,7 +81,17 @@ function visualize_picture(p::Picture, colormap::Symbol=:viridis)
 end
 
 """
-    classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}; tiebreaker=rand, possible_classes=unique(train_classes))
+    datamat(pics::Vector{Picture}) = hcat(getfield.(pics, :data)...)
+
+Return the data of all pictures in `pics`.
+A column in the returned Matrix represents a single picture.
+"""
+datamat(pics::Vector{<:Picture}) = hcat(getfield.(pics, :data)...)
+datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
+
+
+"""
+    classify(neighbor_inds::Vector{Int}, train_classes::Vector{Int}; tiebreaker=rand, l::Int=1, possible_classes=unique(train_classes))
     classify(neighbor_inds::Vector{Vector{Int}}, args...; kwargs...)
 
 kwargs:
@@ -122,6 +132,7 @@ function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int
 end
 knn(tts::TrainTestSplit{<:Real}; kwargs...) = knn(tts.train, tts.test; kwargs...)
 
+
 """  #? Defining `batch` here is required for knn_threaded below
     batch(v::AbstractVector, n_batches::Int, shuffle_pics=true)
 
@@ -159,6 +170,13 @@ function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture
     end
     return output
 end
+knn_threaded(tts::TrainTestSplit; kwargs...) = knn_threaded(tts.train, tts.test; kwargs...)
+
+function classify(tts::TrainTestSplit; k, l=1, tree=BruteTree, tiebreaker=rand, metric=Euclidean())
+    inds = knn_threaded(tts; k, tree, metric)
+    preds = classify(inds, trainclasses(tts); l, tiebreaker)
+    return preds
+end
 
 #=
 """
@@ -178,15 +196,9 @@ end
 
 
 """
-    knn_acc(tts::TrainTestSplit{<:Real}; tiebreaker=rand, kwargs...)
-
-`kwargs...` are passed on as `k::Int, tree=BruteTree, metric=Euclidean()`
+    knn_acc(tts::TrainTestSplit{<:Real}; k::Int, l::Int=1, tree=BruteTree, tiebreaker=rand, metric=Euclidean())
 """
-function knn_acc(tts::TrainTestSplit{<:Real}; k::Int, l::Int=1, tree=BruteTree, tiebreaker=rand, metric=Euclidean())
-    inds, _ = knn(tts.train, tts.test; k, tree, metric)
-	preds = classify(inds, trainclasses(tts); l, tiebreaker)
-	return mean(preds .== testclasses(tts))
-end
+knn_acc(tts::TrainTestSplit{<:Real}; kwargs...) = mean(classify(tts; kwargs...) .== testclasses(tts))
 knn_acc(train::Vector{<:Picture}, test::Vector{<:Picture}; kwargs...) = knn_acc(TrainTestSplit(train, test), kwargs...)
 
 """
@@ -202,18 +214,8 @@ function knn_acc_crossvalidate(pics::Vector{<:Picture}, ratio::Rational = 9//1)
     (mean=mean(x), std=std(x), n_runs = n_runs)
 end
 
-
-
 using MultivariateStats
 using StatsBase
-"""
-    datamat(pics::Vector{Picture}) = hcat(getfield.(pics, :data)...)
-
-Return the data of all pictures in `pics`.
-A column in the returned Matrix represents a single picture.
-"""
-datamat(pics::Vector{<:Picture}) = hcat(getfield.(pics, :data)...)
-datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
 
 """
     remove_constant(m::AbstractMatrix)
