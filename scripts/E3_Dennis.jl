@@ -110,10 +110,21 @@ end
 using EvalMetrics
 pics_33 = pictures[1:10:end]
 tts_33 = TrainTestSplit(pics_33, 99//1)
-
+using OffsetArrays
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 
+let preds = classify(tts_33; k=3)
+    truths = testclasses(tts_33)
+    global confusion_matrix = fill(0, (10, 10)) |> Matrix{Union{String, Int}}
+    confusion_matrix
+    for i in eachindex(truths)
+        confusion_matrix[truths[i]+1, preds[i]+1] += 1
+    end
+    confusion_matrix = [confusion_matrix; sum(confusion_matrix, dims=1)]
+    confusion_matrix = [confusion_matrix sum(confusion_matrix, dims=2)]
+    confusion_matrix
+end
 
 function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
     inds = knn_threaded(tts.train, tts.test; k, tree, metric)

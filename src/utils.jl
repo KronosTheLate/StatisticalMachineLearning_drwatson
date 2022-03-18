@@ -164,7 +164,7 @@ end
 function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
     mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
     output = Vector{Vector{Int}}(undef, length(test_pics))
-    inds, batches = batch(test_pics, Threads.nthreads(), false, check_even=false, return_indices=true)
+    inds, batches = batch(test_pics, 2*Threads.nthreads(), false, check_even=false, return_indices=true)
     Threads.@threads for i in 1:length(batches)
         output[inds[i]] = knn(mytree, batches[i]|>datamat, k)[1]
     end
