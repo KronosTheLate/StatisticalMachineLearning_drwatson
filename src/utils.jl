@@ -122,6 +122,62 @@ function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int
 end
 knn(tts::TrainTestSplit{<:Real}; kwargs...) = knn(tts.train, tts.test; kwargs...)
 
+"""  #? Defining `batch` here is required for knn_threaded below
+    batch(v::AbstractVector, n_batches::Int, shuffle_pics=true)
+
+Create a vector of `n_batches` vectors, containing all of `v`.
+I think that can be done better
+"""
+function batch(v::AbstractVector, n_batches::Int, shuffle_input=true; check_even=true, return_indices=false)
+    shuffle_input  &&  (v = shuffle(v))
+    check_even  &&  length(v) % n_batches != 0   &&   @warn "Number of elements not divisible by number of batches. Batches will be uneven. Set `check_even` to false to silence this warning"
+    divs, rems = divrem(length(v), n_batches)
+    batchlengths = fill(divs, n_batches)
+    batchlengths[end-rems+1:end] .+= 1
+    
+    cumsums = pushfirst!(cumsum(batchlengths), 0)
+    ranges = [cumsums[i]+1:cumsums[i+1] for i in 1:n_batches]
+    if return_indices
+        return (ranges, getindex.([v], ranges))
+    else
+        return getindex.([v], ranges)
+    end
+end
+
+
+"""
+    knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+
+
+"""
+function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+    mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
+    output = Vector{Vector{Int}}(undef, length(test_pics))
+    inds, batches = batch(test_pics, Threads.nthreads(), false, check_even=false, return_indices=true)
+    Threads.@threads for i in 1:length(batches)
+        output[inds[i]] = knn(mytree, batches[i]|>datamat, k)[1]
+    end
+    return output
+end
+@time knn_threaded(trainpics, testpics; k=3)
+
+#=
+"""
+    knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+
+
+"""
+function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+    mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
+    output = Vector{Vector{Int}}(undef, length(test_pics))
+    Threads.@threads for i in eachindex(output)
+        output[i] = knn(mytree, test_pics.data[i], k)[1]
+    end
+    return output
+end
+=#
+
+
 """
     knn_acc(tts::TrainTestSplit{<:Real}; tiebreaker=rand, kwargs...)
 
@@ -182,26 +238,6 @@ function remove_constant(pics::Vector{<:Picture})
     datatogether = datamat(pics)
     reduced_datamat = remove_constant(datatogether)
     return [Picture(pics[i].ID, pics[i].class, reduced_datamat[:, i]) for i in eachindex(pics)]
-end
-
-"""
-    batch(v::AbstractVector, n_batches::Int, shuffle_pics=true)
-
-Create a vector of `n_batches` vectors, containing all of `v`.
-I think that can be done better
-"""
-function batch(v::AbstractVector, n_batches::Int, shuffle_pics=true)
-    l = length(v)
-    l % n_batches != 0   &&   error("Number of elements not divisible by number of batches")
-
-    batchsize = l ÷ n_batches
-    if shuffle_pics
-        inds = shuffle(eachindex(v))
-    else
-        inds = eachindex(v)
-    end
-    sectioned_inds = [inds[x] for x in [batchsize*(i-1)+1:batchsize*i for i in 1:n_batches]]
-    return [v[ind] for ind in sectioned_inds]
 end
 
 """
