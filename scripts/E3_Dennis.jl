@@ -108,25 +108,29 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 using EvalMetrics
-pics_33 = pictures[1:2:end]
-tts_33 = TrainTestSplit(pics_33, 9//1)
+pics_33 = pictures[1:1:end]
+tts_33 = TrainTestSplit(pics_33, 1//1)
 
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 using PrettyTables, ProgressMeter
+using OffsetArrays
 
 function confmat(tts::TrainTestSplit; kwargs...)
     preds = classify(tts; kwargs...)
     truths = testclasses(tts)
     inds_missings = findall(ismissing, preds)
-    n_missings = length(inds_missings)
+    missing_counts = OffsetArray(fill(0, 10), 0:9)
+    for i in inds_missings
+        missing_counts[truths[i]] += 1
+    end
     deleteat!(preds, inds_missings)
     deleteat!(truths, inds_missings)
     confusion_matrix = fill(0, (10, 10))
     for i in eachindex(truths)
         confusion_matrix[truths[i]+1, preds[i]+1] += 1
     end
-    return confusion_matrix, n_missings
+    return confusion_matrix, missing_counts
 end
 
 function print_confmat(cm::AbstractMatrix)
@@ -138,23 +142,23 @@ function print_confmat(cm::AbstractMatrix)
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
-results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
-#=
+# results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
+
 let
     ks = 1:13
-    global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], n_missings = Int[])
+    global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
     p = Progress(91, 1)
     for k in ks
         for l in 1:k
-            cm, n_missings = confmat(tts_33; k, l)
-            push!(results_33, [k, l, cm, n_missings])
+            cm, missing_counts = confmat(tts_33; k, l)
+            push!(results_33, [k, l, cm, missing_counts])
             next!(p)
         end
     end
     save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
     results_33
 end
-=#
+
 import EvalMetrics: accuracy
 function accuracy(cm::AbstractMatrix)
     @assert size(cm) == (10, 10)
