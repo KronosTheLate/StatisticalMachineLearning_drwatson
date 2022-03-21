@@ -144,7 +144,7 @@ end
 
 # results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
 
-let
+let #@ all data, 1//1 => 4h 38m 45s
     ks = 1:13
     global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
     p = Progress(91, 1)
@@ -165,7 +165,8 @@ function accuracy(cm::AbstractMatrix)
     sum(cm[i, i] for i in 1:10) / sum(cm, dims=(1, 2))[1]
 end
 accuracy(results_33.cm[1])
-
+results_33
+readdir(datadir())
 
 begin
     axis = (width=400, height=400)
