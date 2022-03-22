@@ -108,8 +108,6 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 
-pics_33 = pictures[1:3:end]
-tts_33 = TrainTestSplit(pics_33, 1//1)
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
 using PrettyTables, ProgressMeter
@@ -141,6 +139,26 @@ function print_confmat(cm::AbstractMatrix)
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
+begin
+    params = (step = 3, parts_train=1, parts_test=1)
+    results_33, results_33_path = produce_or_load(datadir(), params, prefix="33", suffix="jld2") do params #* params is the 2nd argument NamedTuple, in this case (k=3,)
+        pics = pictures[1:params.step:end]
+        tts = TrainTestSplit(pics, params.parts_train//params.parts_test)
+        ks = 1:13
+        results = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
+        p = Progress(91, 1)
+        for k in ks
+            for l in 1:k
+                cm, missing_counts = confmat(tts; k, l)
+                push!(results, [k, l, cm, missing_counts])
+                next!(p)
+            end
+        end
+        return @strdict results
+    end
+    results_33 = results_33["results"]
+end
+results_33_path
 let #@ all data,    1//1 => 4h 38m 45s
     #@ all data/3,  1//1 =>    XXm XXs
     #@ all data/10, 1//1 =>     2m 34s
@@ -157,7 +175,7 @@ let #@ all data,    1//1 => 4h 38m 45s
     save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio.num)_to_$(tts_33.ratio.den).jld2"), Dict("results"=>results_33))
     results_33
 end
-# load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).jld2"))["results"]
+results_33 = load(datadir("Results_33_n_datapoints=$(66_000÷3)_ratio=1_to_1.jld2"))["results"]
 
 function accuracy(cm::AbstractMatrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 confusion matric"
@@ -195,6 +213,17 @@ begin
     current_axis().yticks = 1:13
     current_axis().title = "6 600 datapoints, 1/1 split"
     current_figure()
+end
+
+##? Ignoring missings.
+import Base: precision
+function precision(cm::Matrix)
+    @assert size(cm) = (10, 10) "Expected a 10x10 matrix"
+    [cm[i, i]/sum(cm[j, i] for j in 1:10) for i in 1:10]
+end
+function recall(cm::Matrix)
+    @assert size(cm) = (10, 10) "Expected a 10x10 matrix"
+    [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
 end
 
 
