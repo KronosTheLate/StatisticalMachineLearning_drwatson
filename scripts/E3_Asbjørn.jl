@@ -80,7 +80,7 @@ fig
 ##? 
 
 function GetClusterCenter(data::Matrix, numberofcluster::Int64) 
-M = (kmeans(data, numberofcluster; maxiter=200)).centers
+M = (kmeans(data, numberofcluster; maxiter=500)).centers
 return M
 end
 
@@ -318,7 +318,7 @@ to
 
 
 
-tts = TrainTestSplit(pictures[1:end] |> remove_constant, 1//1, false) 
+tts = TrainTestSplit(pictures[1:10:end] |> remove_constant, 1//1, false) 
 
 
 """
@@ -365,23 +365,66 @@ acc40 = crossvaldALL(40, tts.train, tts.test, 1, 1:10)
 acc60 = crossvaldALL(60, tts.train, tts.test, 1, 1:10)
 acc80 = crossvaldALL(80, tts.train, tts.test, 1, 1:10)
 acc100 = crossvaldALL(100, tts.train, tts.test, 1, 1:10)
+acc120 = crossvaldALL(120, tts.train, tts.test, 1, 1:10)
+acc140 = crossvaldALL(140, tts.train, tts.test, 1, 1:10)
+acc160 = crossvaldALL(160, tts.train, tts.test, 1, 1:10)
+acc180 = crossvaldALL(180, tts.train, tts.test, 1, 1:10)
+acc200 = crossvaldALL(200, tts.train, tts.test, 1, 1:10)
+
+
+acc20T = crossvaldALL(20, tts.train, tts.train, 1, 1:10)
+acc40T = crossvaldALL(40, tts.train, tts.train, 1, 1:10)
+acc60T = crossvaldALL(60, tts.train, tts.train, 1, 1:10)
+acc80T = crossvaldALL(80, tts.train, tts.train, 1, 1:10)
+acc100T = crossvaldALL(100, tts.train, tts.train, 1, 1:10)
+acc120T = crossvaldALL(120, tts.train, tts.train, 1, 1:10)
+acc140T = crossvaldALL(140, tts.train, tts.train, 1, 1:10)
+acc160T = crossvaldALL(160, tts.train, tts.train, 1, 1:10)
+acc180T = crossvaldALL(180, tts.train, tts.train, 1, 1:10)
+acc200T = crossvaldALL(200, tts.train, tts.train, 1, 1:10)
+
 accOG = TestAcc(tts.train, tts.test, 1)
+accOGT = TestAcc(tts.train, tts.train, 1)
 
 
-errorhigh = [var(acc20)|>√, var(acc40)|>√, var(acc60)|>√,var(acc80)|>√, var(acc100)|>√]
+##? 
+
+errorhigh = [var(acc20)|>√, var(acc40)|>√, var(acc60)|>√,var(acc80)|>√, var(acc100)|>√, var(acc120)|>√, var(acc140)|>√,  var(acc160)|>√,  var(acc180)|>√, var(acc200)|>√]
 errorlow = errorhigh;
 
-ydata = [mean(acc20), mean(acc40), mean(acc60), mean(acc80), mean(acc100), accOG]
+errorhighT = [var(acc20T)|>√, var(acc40T)|>√, var(acc60T)|>√,var(acc80T)|>√, var(acc100T)|>√, var(acc120T)|>√, var(acc140T)|>√,  var(acc160T)|>√,  var(acc180T)|>√, var(acc200T)|>√]
+errorlowY = errorhighT;
+
+
+ydata = [mean(acc20), mean(acc40), mean(acc60), mean(acc80), mean(acc100), mean(acc120), mean(acc140), mean(acc160), mean(acc180), mean(acc200) accOG]
+ydataT = [mean(acc20T), mean(acc40T), mean(acc60T), mean(acc80T), mean(acc100T), mean(acc120T), mean(acc140T), mean(acc160T), mean(acc180T), mean(acc200T) accOGT]
+
 
 fig = Figure()
 ax=Axis(fig[1,1])
-scatter!(1:length(ydata), ydata) 
+sca = scatter!(fig[1,1],1:length(ydata), ydata, color = :blue) 
+scat =scatter!(fig[1,1],1:length(ydataT), ydataT, color = :black) 
 
-errorbars!(1:length(errorhigh), ydata[1:5], errorhigh, errorlow,
-    color = :blue,
+errorbars!(1:length(errorhigh), ydata[1:7], errorhigh, errorlow,
+    color = :black,
     whiskerwidth = 10)
 
-processors = ["20", "40", "60", "80", "100", "No clustering"]
+
+errorbars!(1:length(errorhighT), ydataT[1:7], errorhigh, errorlow,
+    color = :black,
+    whiskerwidth = 10)
+
+processors = ["20", "40", "60", "80", "100", "120", "140", "160", "180", "200" "No clustering"]
 ax.xticks = (1:length(ydata), processors)
 Label(fig[1,0], "Accuracy for KNN",rotation = π/2, tellheight = false)
+#hidedecorations!(ax)
+ax.yticks = LinearTicks(20)
+
+
+
+Legend(fig[1, 3],
+    [sca, scat],
+    ["Test", "Train"])
+
+
 fig
