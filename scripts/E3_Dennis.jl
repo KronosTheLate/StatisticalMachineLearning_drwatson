@@ -108,7 +108,7 @@ end
 #? 3.3: Evaluation methods of k-NN
 #ToDo As seen in the hierarchical clustering plot we often get different labels when finding the nearest neighbors of different ciphers. This indicates that we are not completely sure about our estimation. Until now, in k-NN we have simply used the one with most votes. But we can also exclude predictions which does not have enough of the same labels. In k-NN we can set the “l” to the minimum number of “k” nearest neighbors of the strongest label to accept a match.
 
-pics_33 = pictures[1:10:end]
+pics_33 = pictures[1:3:end]
 tts_33 = TrainTestSplit(pics_33, 1//1)
 ## ToDo 3.3.1 Plot the precision-recall curves for 1 to 13 “k” with “l” 
 #  @    values up to the “k” value. Here, the results should be one plot containing “k” lines, and each one have “k” datapoints.
@@ -142,6 +142,7 @@ function print_confmat(cm::AbstractMatrix)
 end
 
 let #@ all data,    1//1 => 4h 38m 45s
+    #@ all data/3,  1//1 =>    XXm XXs
     #@ all data/10, 1//1 =>     2m 34s
     ks = 1:13
     global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
@@ -167,13 +168,34 @@ accuracy(results_33.cm[1])
 using AlgebraOfGraphics
 begin
     axis = (width=400, height=400)
-    plt = AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy)
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy=>"Accuracy")
+    plt *= mapping(color = :l => "Threshold l")
     draw(plt; axis)
+    current_axis().xticks = 1:13
+    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_figure()
 end
 
+begin
+    axis = (width=400, height=400)
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l")
+    plt *= mapping(color = :cm => accuracy => "Accuracy")
+    draw(plt; axis)
+    current_axis().xticks = 1:13
+    current_axis().yticks = 1:13
+    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_figure()
+end
 
-scatter(convert.(Float64, ratios), times.|>identity, axis=(xlabel="Train to Test ratio", ylabel="Time [s]", xscale=log10)); DataInspector(); current_figure()
-
+begin
+    axis = (width=400, height=400)
+    plt = visual(Heatmap, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l", :cm=>accuracy=>"Accuracy")
+    draw(plt; axis)
+    current_axis().xticks = 1:13
+    current_axis().yticks = 1:13
+    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_figure()
+end
 
 
 ###! Below is the old code that gave a straigt line.
