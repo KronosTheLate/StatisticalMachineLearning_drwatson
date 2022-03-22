@@ -164,7 +164,6 @@ function accuracy(cm::AbstractMatrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 confusion matric"
     sum(cm[i, i] for i in 1:10) / sum(cm, dims=(1, 2))[1]
 end
-accuracy(results_33.cm[1])
 
 using AlgebraOfGraphics
 begin
@@ -173,7 +172,7 @@ begin
     plt *= mapping(color = :l => "Threshold l")
     draw(plt; axis)
     current_axis().xticks = 1:13
-    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
@@ -184,7 +183,7 @@ begin
     draw(plt; axis)
     current_axis().xticks = 1:13
     current_axis().yticks = 1:13
-    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
@@ -194,21 +193,22 @@ begin
     draw(plt; axis)
     current_axis().xticks = 1:13
     current_axis().yticks = 1:13
-    current_axis().title = "6 600 datapoints, 1/1 split"
+    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
 ##? Ignoring missings.
 import Base: precision
 function precision(cm::Matrix)
-    @assert size(cm) = (10, 10) "Expected a 10x10 matrix"
+    @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[j, i] for j in 1:10) for i in 1:10]
 end
 function recall(cm::Matrix)
-    @assert size(cm) = (10, 10) "Expected a 10x10 matrix"
+    @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
 end
-
+precision(results_33.cm[1])
+recall(results_33.cm[1])
 
 ###! Below is the old code that gave a straigt line.
 ##
