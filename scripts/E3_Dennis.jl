@@ -159,23 +159,6 @@ begin
     results_33 = results_33["results"]
 end
 results_33_path
-let #@ all data,    1//1 => 4h 38m 45s
-    #@ all data/3,  1//1 =>    XXm XXs
-    #@ all data/10, 1//1 =>     2m 34s
-    ks = 1:13
-    global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
-    p = Progress(91, 1)
-    for k in ks
-        for l in 1:k
-            cm, missing_counts = confmat(tts_33; k, l)
-            push!(results_33, [k, l, cm, missing_counts])
-            next!(p)
-        end
-    end
-    save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio.num)_to_$(tts_33.ratio.den).jld2"), Dict("results"=>results_33))
-    results_33
-end
-results_33 = load(datadir("Results_33_n_datapoints=$(66_000÷3)_ratio=1_to_1.jld2"))["results"]
 
 function accuracy(cm::AbstractMatrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 confusion matric"
