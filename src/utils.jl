@@ -18,6 +18,9 @@ struct Picture{T<:Real}
     Picture(a::Int, b::Int, c::Vector{<:Real}) = new{eltype(c)}(a, b, c)
 end
 
+import Base: eltype
+eltype(::Picture{T}) where {T} = T
+
 import Base: getproperty
 getproperty(x::Vector{<:Picture}, f::Symbol) = getproperty.(x, f)
 
@@ -88,7 +91,7 @@ end
 Return the data of all pictures in `pics`.
 A column in the returned Matrix represents a single picture.
 """
-datamat(pics::Vector{<:Picture}) = hcat(getfield.(pics, :data)...)
+datamat(pics::Vector{Picture{T where T<:Real}})  = Matrix{T}(hcat(getfield.(pics, :data)...))
 datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
 
 
@@ -130,7 +133,7 @@ using NearestNeighbors
 import NearestNeighbors: knn
 function knn(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
     mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
-    return knn(mytree, hcat(getfield.(test_pics, :data)...), k, true)
+    return knn(mytree, test_pics|>datamat, k, true)
 end
 knn(tts::TrainTestSplit{<:Real}; kwargs...) = knn(tts.train, tts.test; kwargs...)
 
@@ -163,10 +166,13 @@ end
 
 
 """
-function knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
+function knn_threaded(train_pics::Vector{Picture{T}}, test_pics::Vector{Picture{T}}; k::Int, tree=BruteTree, metric=Euclidean()) where {T<:Real}
     mytree = tree(hcat(getfield.(train_pics, :data)...), metric)
+    # return mytree
     output = Vector{Vector{Int}}(undef, length(test_pics))
+    @assert length(test_pics) > 2*Threads.nthreads()  "Too few pictures to make sure each batch contains at least 1 picture."
     inds, batches = batch(test_pics, 2*Threads.nthreads(), false, check_even=false, return_indices=true)
+    # @show typeof(batches)
     Threads.@threads for i in 1:length(batches)
         output[inds[i]] = knn(mytree, batches[i]|>datamat, k)[1]
     end
