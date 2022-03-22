@@ -197,16 +197,18 @@ begin
     current_figure()
 end
 
-##? Ignoring missings.
+##? Ignoring missings leads to following definition of prec and recall
 import Base: precision
 function precision(cm::Matrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[j, i] for j in 1:10) for i in 1:10]
 end
+
 function recall(cm::Matrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
 end
+
 precision(results_33.cm[1])
 recall(results_33.cm[1])
 
