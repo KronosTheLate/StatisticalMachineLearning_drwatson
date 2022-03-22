@@ -175,7 +175,17 @@ begin
     current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
-
+begin #? Same plot as above with proportion of classifications made on colorbar
+    axis = (width=400, height=400)
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy=>"Accuracy")
+    plt *= mapping(color = :l => "Threshold l")
+    draw(plt; axis)
+    current_axis().xticks = 1:13
+    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
+    current_figure()
+end
+scatter(results_33.missing_counts .|> sum, results_33.cm .|> accuracy,
+axis=(xlabel="Missing count", ylabel="Accuracy", title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"))
 begin
     axis = (width=400, height=400)
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l")
