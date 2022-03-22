@@ -314,11 +314,11 @@ Clustersize = 20
 @timeit to "KNN classifying" TestAcc(train, test, 1)
 to
 ##?
-##! alt data! 
+##! alt data! -------------------------------------------------------------------------------------------
 
 
 
-tts = TrainTestSplit(pictures |> remove_constant, 1//1, false) 
+tts = TrainTestSplit(pictures[1:end] |> remove_constant, 1//1, false) 
 
 
 """
@@ -348,9 +348,40 @@ function cluster_center_matrixAll(Clustersize::Int, data::Vector{Picture{Float64
     end
 end
 
-Mpictures = cluster_center_matrixAll(300, tts.train)
+function crossvaldALL(clustersize, Traindata, Testdata, k, rep)
+    accSaver = []
+    for i in rep
+    push!(accSaver, TestAcc(cluster_center_matrixAll(clustersize, Traindata), Testdata, k);)
+    end
+    return accSaver
+    end
 
-TestAcc(Mpictures, tts.test, 1)
-TestAcc(tts.train, tts.test, 1)
+crossvaldALL(10, tts.train, tts.test, 1, 1:5)
 
-Mpictures[91] |> visualize_picture
+
+
+acc20 = crossvaldALL(20, tts.train, tts.test, 1, 1:10)
+acc40 = crossvaldALL(40, tts.train, tts.test, 1, 1:10)
+acc60 = crossvaldALL(60, tts.train, tts.test, 1, 1:10)
+acc80 = crossvaldALL(80, tts.train, tts.test, 1, 1:10)
+acc100 = crossvaldALL(100, tts.train, tts.test, 1, 1:10)
+accOG = TestAcc(tts.train, tts.test, 1)
+
+
+errorhigh = [var(acc20)|>√, var(acc40)|>√, var(acc60)|>√,var(acc80)|>√, var(acc100)|>√]
+errorlow = errorhigh;
+
+ydata = [mean(acc20), mean(acc40), mean(acc60), mean(acc80), mean(acc100), accOG]
+
+fig = Figure()
+ax=Axis(fig[1,1])
+scatter!(1:length(ydata), ydata) 
+
+errorbars!(1:length(errorhigh), ydata[1:5], errorhigh, errorlow,
+    color = :blue,
+    whiskerwidth = 10)
+
+processors = ["20", "40", "60", "80", "100", "No clustering"]
+ax.xticks = (1:length(ydata), processors)
+Label(fig[1,0], "Accuracy for KNN",rotation = π/2, tellheight = false)
+fig
