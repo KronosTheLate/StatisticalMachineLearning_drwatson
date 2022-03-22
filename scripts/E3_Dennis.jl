@@ -142,22 +142,21 @@ function print_confmat(cm::AbstractMatrix)
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
-# results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
-
-let #@ all data, 1//1 => 4h 38m 45s
-    ks = 1:13
-    global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
-    p = Progress(91, 1)
-    for k in ks
-        for l in 1:k
-            cm, missing_counts = confmat(tts_33; k, l)
-            push!(results_33, [k, l, cm, missing_counts])
-            next!(p)
-        end
-    end
-    save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
-    results_33
-end
+results = load(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"))
+# let #@ all data, 1//1 => 4h 38m 45s
+#     ks = 1:13
+#     global results_33 = DataFrame(k=Int[], l=Int[], cm=Matrix[], missing_counts = OffsetArray[])
+#     p = Progress(91, 1)
+#     for k in ks
+#         for l in 1:k
+#             cm, missing_counts = confmat(tts_33; k, l)
+#             push!(results_33, [k, l, cm, missing_counts])
+#             next!(p)
+#         end
+#     end
+#     save(datadir("Results_33_n_datapoints=$(tts_33.n)_ratio=$(tts_33.ratio).csv"), results_33)
+#     results_33
+# end
 
 import EvalMetrics: accuracy
 function accuracy(cm::AbstractMatrix)

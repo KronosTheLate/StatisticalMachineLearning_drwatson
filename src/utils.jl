@@ -292,21 +292,21 @@ function map_labels(ordered_labels::Vector{<:Integer}, cluster::Hclust)
     return output
 end
 
-import Base: show
-using PrettyTables, EvalMetrics
-function show(io::IO, cm::ConfusionMatrix)
-    pretty_table(io,
-    linebreaks=true,
-    alignment=:C,
-    body_hlines = [1, 2, 3],
-    noheader=true,
-        [
-            " "                    "Actual\npositives" "Actual\nnegatives"
-            "Prediced\npositives"        cm.tp          cm.fp
-            "Prediced\nnegatives"        cm.fn          cm.tn
-            "Total"                      cm.p           cm.n
-        ]
-    )
-end
+# import Base: show
+# using PrettyTables, EvalMetrics
+# function show(io::IO, cm::ConfusionMatrix)
+#     pretty_table(io,
+#     linebreaks=true,
+#     alignment=:C,
+#     body_hlines = [1, 2, 3],
+#     noheader=true,
+#         [
+#             " "                    "Actual\npositives" "Actual\nnegatives"
+#             "Prediced\npositives"        cm.tp          cm.fp
+#             "Prediced\nnegatives"        cm.fn          cm.tn
+#             "Total"                      cm.p           cm.n
+#         ]
+#     )
+# end
 
 @info "utils.jl included"
