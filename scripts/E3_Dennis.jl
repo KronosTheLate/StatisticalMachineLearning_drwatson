@@ -25,6 +25,7 @@ else
 end
 
 using BenchmarkHistograms
+using Tools #My package
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
 numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
@@ -140,7 +141,7 @@ function print_confmat(cm::AbstractMatrix)
 end
 
 begin
-    params = (step = 3, parts_train=1, parts_test=1)
+    params = (step = 10, parts_train=1, parts_test=1)
     results_33, results_33_path = produce_or_load(datadir(), params, prefix="33", suffix="jld2") do params #* params is the 2nd argument NamedTuple, in this case (k=3,)
         pics = pictures[1:params.step:end]
         tts = TrainTestSplit(pics, params.parts_train//params.parts_test)
@@ -158,7 +159,6 @@ begin
     end
     results_33 = results_33["results"]
 end
-results_33_path
 
 function accuracy(cm::AbstractMatrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 confusion matric"
@@ -172,20 +172,20 @@ begin
     plt *= mapping(color = :l => "Threshold l")
     draw(plt; axis)
     current_axis().xticks = 1:13
-    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 begin #? Same plot as above with proportion of classifications made on colorbar
     axis = (width=400, height=400)
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy=>"Accuracy")
-    plt *= mapping(color = :l => "Threshold l")
+    plt *= mapping(color = :missing_counts => (x->(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)) - sum(x))/(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)))) => "Proportion of points classified")
     draw(plt; axis)
     current_axis().xticks = 1:13
-    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 scatter(results_33.missing_counts .|> sum, results_33.cm .|> accuracy,
-axis=(xlabel="Missing count", ylabel="Accuracy", title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"))
+axis=(xlabel="Missing count", ylabel="Accuracy", title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"))
 begin
     axis = (width=400, height=400)
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l")
@@ -193,7 +193,7 @@ begin
     draw(plt; axis)
     current_axis().xticks = 1:13
     current_axis().yticks = 1:13
-    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
@@ -203,7 +203,7 @@ begin
     draw(plt; axis)
     current_axis().xticks = 1:13
     current_axis().yticks = 1:13
-    current_axis().title = "$(66000÷params.step), $(params.parts_train)/$(params.parts_test) split"
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
@@ -213,20 +213,54 @@ function precision(cm::Matrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[j, i] for j in 1:10) for i in 1:10]
 end
-avg_precision(cm::Matrix) = mean(precision(cm))
+avg_precision(cm::Matrix) = mean(filter(!isnan, precision(cm)))
 
 function recall(cm::Matrix)
     @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
     [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
 end
-avg_recall(cm::Matrix) = mean(recall(cm))
+avg_recall(cm::Matrix) = mean(filter(!isnan, recall(cm)))
+#!Mention NaN's, coming from no real DIGIT and no predicted DIGIT.
 
-precision(results_33.cm[1])
-recall(results_33.cm[1])
+F1_score(cm::Matrix) = 2(avg_precision(cm) ⊕ avg_recall(cm))
 
-scatter(avg_precision.(results_33.cm), avg_recall.(results_33.cm))
+let df = DataFrame((cm = results_33.cm, k=results_33.k, l=results_33.l, prec=avg_precision.(results_33.cm), rec=avg_recall.(results_33.cm), F1=F1_score.(results_33.cm)))
+    my_data = groupby(select(df, [:cm, :k]), :k)
+    max_f1s = []
+    for group in my_data
+        F1s_current_group = []
+        for cm in group.cm
+            push!(F1s_current_group, F1_score(cm))
+        end
+        push!(max_f1s, maximum(F1s_current_group))
+    end
+    max_f1s .|> identity
+    result = DataFrame(max_F1=identity.(max_f1s), k=1:13)
+    scatter(result.k, result.max_F1, axis=(xlabel="k", ylabel="Maximum F1 score", xticks=1:13))
+    # plt = AlgebraOfGraphics.data(result) * mapping(:k, :max_F1)
+    # draw(plt)
+end
 
 
+let
+    my_data = (k=results_33.k, l=results_33.l, prec=avg_precision.(results_33.cm), rec=avg_recall.(results_33.cm), F1=F1_score.(results_33.cm))
+    # @show my_data.l
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(my_data)
+    
+    plt1 = plt * mapping(:rec=>"Recall", :prec=>"Precision")
+    plt1 *= mapping(color=:l=>"Threshold l")
+
+    plt2 = plt * mapping(:k=>"k", :F1=>"F1 score")
+    plt2 *= mapping(color=:l=>"Threshold l")
+
+    plt3 = plt * mapping(:k=>"k", :l=>"Threshold l")
+    plt3 *= mapping(color=:F1=>"F1 score")
+    fig = draw(plt1)
+
+    # current_figure()
+end
+
+#ToDo 3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
 
 
 ###! Below is the old code that gave a straigt line.
