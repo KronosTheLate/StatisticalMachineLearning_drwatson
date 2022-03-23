@@ -145,6 +145,7 @@ Create a vector of `n_batches` vectors, containing all of `v`.
 I think that can be done better
 """
 function batch(v::AbstractVector, n_batches::Int, shuffle_input=true; check_even=true, return_indices=false)
+    @assert length(v) ≥ n_batches "Trying to make $n_batches batches from $(length(v)) elements. This would result in empty arrays of type `Any`, which is likely to cause problems."
     shuffle_input  &&  (v = shuffle(v))
     check_even  &&  length(v) % n_batches != 0   &&   @warn "Number of elements not divisible by number of batches. Batches will be uneven. Set `check_even` to false to silence this warning"
     divs, rems = divrem(length(v), n_batches)
@@ -159,7 +160,7 @@ function batch(v::AbstractVector, n_batches::Int, shuffle_input=true; check_even
         return getindex.([v], ranges)
     end
 end
-
+batch(1:10, 8)
 
 """
     knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
