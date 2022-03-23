@@ -141,7 +141,7 @@ function print_confmat(cm::AbstractMatrix)
 end
 
 begin
-    params = (step = 10, parts_train=1, parts_test=1)
+    params = (step = 1, parts_train=1, parts_test=1)
     results_33, results_33_path = produce_or_load(datadir(), params, prefix="33", suffix="jld2") do params #* params is the 2nd argument NamedTuple, in this case (k=3,)
         pics = pictures[1:params.step:end]
         tts = TrainTestSplit(pics, params.parts_train//params.parts_test)
