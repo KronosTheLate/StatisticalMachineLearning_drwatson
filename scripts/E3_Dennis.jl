@@ -222,7 +222,6 @@ function recall(cm::Matrix, return_avg=true)
     precisions = [tps[i] / (tps[i] + fns[i]) for i in axes(cm, 1)]
     return_avg ? (return sum(precisions)/size(cm, 1)) : (return precisions)
 end
-
 F1_score(cm::Matrix) = 2(precision(cm) ⊕ recall(cm))
 
 ##!Mention NaN's, coming from no real DIGIT and no predicted DIGIT.
@@ -236,24 +235,10 @@ begin
     draw(plt)
     current_axis().xticks = 1:13
     current_figure().content[2].attributes.ticks = 1:13
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
-let
-    result_33_copy = copy(results_33)
-    result_33_copy.k = result_33_copy.k .|> string
-    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(result_33_copy)
-    plt = plt * mapping(:cm=>recall=>"Average recall", :cm=>precision=>"Average precision")
-    plt *= mapping(marker = :k => sorter(string.(Vector(1:13))))
-    plt *= mapping(color=:l=>"Threshold l")
-    draw(plt)
-    current_axis().aspect = 1
-    current_axis().xticks = [0.8, 0.85, 0.9, 0.95, 0.99]
-    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
-    # current_axis().attributes.limits = (0.8, 1, 0.8, 1)
-    current_figure().content[2].attributes.ticks = 1:13
-    current_figure()
-end
 
 let
     results = groupby(results_33, :k)
@@ -263,12 +248,13 @@ let
         scatterlines!(ax, group.cm .|> recall, group.cm .|> precision, label="$i", cycle=[:color, :marker])
     end
     Legend(fig[1, 2], ax, "Value of k")
-    
+    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
 
-
+filter(row->row.k==3 && row.l==3, results_33).missing_counts[1] |> sum
+11_331/33_000
 ###! Below is the old code that gave a straigt line.
 ##
 function CMs(tts; k, l = 1, tiebreaker = rand, tree = BruteTree,  metric = Euclidean())
