@@ -142,6 +142,11 @@ function print_confmat(cm::AbstractMatrix)
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
+##
+
+using AlgebraOfGraphics
+set_aog_theme!()
+update_theme!(resolution=(900, 600), markersize=16, fontsize=20, Axis=(xgridvisible=true, ygridvisible=true, ))
 begin
     params = (step = 1, parts_train=1, parts_test=1)
     results_33, results_33_path = produce_or_load(datadir(), params, prefix="33", suffix="jld2") do params #* params is the 2nd argument NamedTuple, in this case (k=3,)
@@ -167,47 +172,36 @@ function accuracy(cm::AbstractMatrix)
     sum(cm[i, i] for i in 1:10) / sum(cm, dims=(1, 2))[1]
 end
 
-using AlgebraOfGraphics
 begin
-    axis = (width=400, height=400)
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy=>"Accuracy")
     plt *= mapping(color = :l => "Threshold l")
-    draw(plt; axis)
+    draw(plt)
     current_axis().xticks = 1:13
+    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
     current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
+    current_figure().content[2].attributes.ticks = 1:13
     current_figure()
 end
+
 begin #? Same plot as above with proportion of classifications made on colorbar
-    axis = (width=400, height=400)
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :cm=>accuracy=>"Accuracy")
     plt *= mapping(color = :missing_counts => (x->(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)) - sum(x))/(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)))) => "Proportion of points classified")
-    draw(plt; axis)
+    draw(plt)
     current_axis().xticks = 1:13
-    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
-    current_figure()
-end
-scatter(results_33.missing_counts .|> sum, results_33.cm .|> accuracy,
-axis=(xlabel="Missing count", ylabel="Accuracy", title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"))
-begin
-    axis = (width=400, height=400)
-    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l")
-    plt *= mapping(color = :cm => accuracy => "Accuracy")
-    draw(plt; axis)
-    current_axis().xticks = 1:13
-    current_axis().yticks = 1:13
+    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
     current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure()
 end
 
 begin
-    axis = (width=400, height=400)
-    plt = visual(Heatmap, colormap=:thermal) * AlgebraOfGraphics.data(results_33) * mapping(:k, :l=>"Threshold l", :cm=>accuracy=>"Accuracy")
-    draw(plt; axis)
-    current_axis().xticks = 1:13
-    current_axis().yticks = 1:13
-    current_axis().title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33)
+    plt *= mapping(:missing_counts => sum => "Missing counts", :cm => accuracy => "Accuracy", color=:l)
+    draw(plt)
+    current_axis().title = title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
+    current_figure().content[2].attributes.ticks = 1:13
     current_figure()
 end
+
 
 ##? Ignoring missings leads to following definition of prec and recall
 import Base: precision
@@ -222,47 +216,39 @@ function recall(cm::Matrix)
     [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
 end
 avg_recall(cm::Matrix) = mean(filter(!isnan, recall(cm)))
-#!Mention NaN's, coming from no real DIGIT and no predicted DIGIT.
-
 F1_score(cm::Matrix) = 2(avg_precision(cm) ⊕ avg_recall(cm))
 
-let df = DataFrame((cm = results_33.cm, k=results_33.k, l=results_33.l, prec=avg_precision.(results_33.cm), rec=avg_recall.(results_33.cm), F1=F1_score.(results_33.cm)))
-    my_data = groupby(select(df, [:cm, :k]), :k)
-    max_f1s = []
-    for group in my_data
-        F1s_current_group = []
-        for cm in group.cm
-            push!(F1s_current_group, F1_score(cm))
-        end
-        push!(max_f1s, maximum(F1s_current_group))
-    end
-    max_f1s .|> identity
-    result = DataFrame(max_F1=identity.(max_f1s), k=1:13)
-    scatter(result.k, result.max_F1, axis=(xlabel="k", ylabel="Maximum F1 score", xticks=1:13))
-    # plt = AlgebraOfGraphics.data(result) * mapping(:k, :max_F1)
-    # draw(plt)
-end
-
-
-let
-    my_data = (k=results_33.k, l=results_33.l, prec=avg_precision.(results_33.cm), rec=avg_recall.(results_33.cm), F1=F1_score.(results_33.cm))
-    # @show my_data.l
-    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(my_data)
-    
-    plt1 = plt * mapping(:rec=>"Recall", :prec=>"Precision")
-    plt1 *= mapping(color=:l=>"Threshold l")
-
-    plt2 = plt * macpping(:k=>"k", :F1=>"F1 score")
-    plt2 *= mapping(color=:l=>"Threshold l")
-
-    plt3 = plt * mapping(:k=>"k", :l=>"Threshold l")
-    plt3 *= mapping(color=:F1=>"F1 score")
-    fig = draw(plt1)
-
-    # current_figure()
-end
+##!Mention NaN's, coming from no real DIGIT and no predicted DIGIT.
 
 #ToDo 3.3.2 Plot the maximum F1 values for each of the k in a plot together. With F1 score on the y- axis and “k”-value on the x-axis.
+
+begin
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33)
+    plt = plt * mapping(:k=>"k", :cm=>F1_score=>"F1 score")
+    plt *= mapping(color=:l=>"Threshold l")
+    draw(plt)
+    current_axis().xticks = 1:13
+    current_figure().content[2].attributes.ticks = 1:13
+    current_figure()
+end
+
+let
+    result_33_copy = copy(results_33)
+    result_33_copy.k = result_33_copy.k .|> string
+    plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(result_33_copy)
+    plt = plt * mapping(:cm=>avg_recall=>"Average recall", :cm=>avg_precision=>"Average precision")
+    plt *= mapping(marker = :k => sorter(string.(Vector(1:13))))
+    plt *= mapping(color=:l=>"Threshold l")
+    draw(plt)
+    current_axis().aspect = 1
+    current_axis().xticks = [0.8, 0.85, 0.9, 0.95, 0.99]
+    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
+    current_axis().attributes.limits = (0.8, 1, 0.8, 1)
+    current_figure().content[2].attributes.ticks = 1:13
+    current_figure()
+end
+current_axis().attributes
+
 
 
 ###! Below is the old code that gave a straigt line.
