@@ -13,13 +13,15 @@ end
 
 """
     ⊕(args...) = 1/sum(x->1/x, args)
-Compute the reciprocal over sum of reciprocal.
+
+Compute the reciprocal of sum of reciprocal.
 Can be used as infix operator.
 """
 ⊕(args...) = 1/sum(x->1/x, args)
-export ⊕
 
 """
     tofn(x) = typeof(fieldnames(x))
 """
-tofn(x) = typeof(fieldnames(x))
+tofn(x) = fieldnames(typeof(x))
+
+@info "tools_dennis.jl included"

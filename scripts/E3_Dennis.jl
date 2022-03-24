@@ -359,3 +359,11 @@ end
 #ToDo 3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
 
 #ToDo 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the available datasets (disjunct). Represent the training data as a number of cluster centroids and compare performance, try multiple cluster sizes.
+
+f_(args...) = inv(sum(inv, args))
+
+##
+a = 1
+b = 10
+c = 100
+f_(a, b, c) == a⊕b⊕c
