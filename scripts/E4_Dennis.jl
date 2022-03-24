@@ -30,13 +30,38 @@ using BenchmarkHistograms
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
 numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
+nothing
 
 ##!======================================================!##
 #? Discretize the range of values of principle componten coefficient in e.g. 200
 
 
 #¤ Decision trees
+using DecisionTree, MLJ
+DecisionTreeClassifier = @load DecisionTreeClassifier pkg=DecisionTree
+MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
+tts = TrainTestSplit(pictures[1:10:end], 1//1)
 
+X, y = @load_iris
+y
+tree = DecisionTreeClassifier()
+begin
+    traindata = tts.train|>datamat|>transpose |> collect
+    cols = collect(eachcol(traindata))
+    traindata = NamedTuple([Symbol(i)=>cols[i] for i in axes(traindata, 2)])
+
+    testdata = tts.test|>datamat|>transpose |> collect
+    cols = collect(eachcol(testdata))
+    testdata = NamedTuple([Symbol(i)=>cols[i] for i in axes(testdata, 2)])
+end
+trainlabels = tts|>trainclasses |> categorical
+
+mach = machine(tree, traindata, trainlabels)
+MLJ.fit!(mach)
+ŷ = MLJ.predict(mach, testdata)
+report(mach)
+print_tree(mach, 3)
+mach|>print_fields
 #¤  Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 #¤  compute the information gain associated to it (plot 5 graphs, one for each component, and show 
 #¤  the highest information gain). See slides for how to compute information gain.
