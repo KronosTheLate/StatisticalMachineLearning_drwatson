@@ -1,6 +1,7 @@
 #Custum:
 #Files that end with RData
-*.RData  
+*.RData
+data/ciphers33.jld2
 
 ################################################################################
 #                          DrWatson Project Structure                          #

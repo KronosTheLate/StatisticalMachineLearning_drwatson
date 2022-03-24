@@ -1442,13 +1442,6 @@ git-tree-sha1 = "d60b0c96a16aaa42138d5d38ad386df672cb8bd8"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 version = "0.5.16"
 
-[[deps.Tools]]
-git-tree-sha1 = "c02d027d2df08f424f7c96443ed390e296af74d1"
-repo-rev = "main"
-repo-url = "https://github.com/KronosTheLate/Tools.jl"
-uuid = "75d8cae4-cbd2-49ea-8ed4-9d3aee9dbe67"
-version = "0.1.0"
-
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]
 git-tree-sha1 = "216b95ea110b5972db65aa90f88d8d89dcb8851c"

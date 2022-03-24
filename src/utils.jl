@@ -91,7 +91,7 @@ end
 Return the data of all pictures in `pics`.
 A column in the returned Matrix represents a single picture.
 """
-datamat(pics::Vector{Picture{T where T<:Real}})  = Matrix{T}(hcat(getfield.(pics, :data)...))
+datamat(pics::Vector{Picture{T}}) where {T<:Real}  = Matrix{T}(hcat(getfield.(pics, :data)...))
 datamat(tts::TrainTestSplit)= (train=datamat(tts.train), test=datamat(tts.test))
 
 
@@ -160,7 +160,6 @@ function batch(v::AbstractVector, n_batches::Int, shuffle_input=true; check_even
         return getindex.([v], ranges)
     end
 end
-batch(1:10, 8)
 
 """
     knn_threaded(train_pics::Vector{<:Picture}, test_pics::Vector{<:Picture}; k::Int, tree=BruteTree, metric=Euclidean())
