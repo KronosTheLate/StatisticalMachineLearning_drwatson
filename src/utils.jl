@@ -180,6 +180,9 @@ function knn_threaded(train_pics::Vector{Picture{T}}, test_pics::Vector{Picture{
 end
 knn_threaded(tts::TrainTestSplit; kwargs...) = knn_threaded(tts.train, tts.test; kwargs...)
 
+"""
+    classify(tts::TrainTestSplit; k, kwargs...)
+"""
 function classify(tts::TrainTestSplit; k, l=1, tree=BruteTree, tiebreaker=rand, metric=Euclidean())
     inds = knn_threaded(tts; k, tree, metric)
     preds = classify(inds, trainclasses(tts); l, tiebreaker)

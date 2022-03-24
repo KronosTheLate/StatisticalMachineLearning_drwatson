@@ -205,18 +205,25 @@ end
 
 ##? Ignoring missings leads to following definition of prec and recall
 import Base: precision
-function precision(cm::Matrix)
-    @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
-    [cm[i, i]/sum(cm[j, i] for j in 1:10) for i in 1:10]
+function precision(cm::Matrix, return_avg=true)
+    @assert size(cm, 1) == size(cm, 2) "Expected a square matrix"
+    @assert true ∉ isnan.(cm)  "NaN values in input matrix. Dealing with them is not implemented."
+    tps = [cm[i, i] for i in axes(cm, 1)]  # Diagonal elements
+    fps = sum(cm, dims=1) .- tps    # Sum columns (assumed to be predictions) while removing true positives
+    precisions = [tps[i] / (tps[i] + fps[i]) for i in axes(cm, 1)]
+    return_avg ? (return sum(precisions)/size(cm, 1)) : (return precisions)
 end
-avg_precision(cm::Matrix) = mean(filter(!isnan, precision(cm)))
 
-function recall(cm::Matrix)
-    @assert size(cm) == (10, 10) "Expected a 10x10 matrix"
-    [cm[i, i]/sum(cm[i, j] for j in 1:10) for i in 1:10]
+function recall(cm::Matrix, return_avg=true)
+    @assert size(cm, 1) == size(cm, 2) "Expected a square matrix"
+    @assert true ∉ isnan.(cm)  "NaN values in input matrix. Dealing with them is not implemented."
+    tps = [cm[i, i] for i in axes(cm, 1)]  # Diagonal elements
+    fns = sum(cm, dims=2) .- tps    # Sum columns (assumed to be truths) while removing true positives
+    precisions = [tps[i] / (tps[i] + fns[i]) for i in axes(cm, 1)]
+    return_avg ? (return sum(precisions)/size(cm, 1)) : (return precisions)
 end
-avg_recall(cm::Matrix) = mean(filter(!isnan, recall(cm)))
-F1_score(cm::Matrix) = 2(avg_precision(cm) ⊕ avg_recall(cm))
+
+F1_score(cm::Matrix) = 2(precision(cm) ⊕ recall(cm))
 
 ##!Mention NaN's, coming from no real DIGIT and no predicted DIGIT.
 
@@ -236,18 +243,32 @@ let
     result_33_copy = copy(results_33)
     result_33_copy.k = result_33_copy.k .|> string
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(result_33_copy)
-    plt = plt * mapping(:cm=>avg_recall=>"Average recall", :cm=>avg_precision=>"Average precision")
+    plt = plt * mapping(:cm=>recall=>"Average recall", :cm=>precision=>"Average precision")
     plt *= mapping(marker = :k => sorter(string.(Vector(1:13))))
     plt *= mapping(color=:l=>"Threshold l")
     draw(plt)
     current_axis().aspect = 1
     current_axis().xticks = [0.8, 0.85, 0.9, 0.95, 0.99]
     current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
-    current_axis().attributes.limits = (0.8, 1, 0.8, 1)
+    # current_axis().attributes.limits = (0.8, 1, 0.8, 1)
     current_figure().content[2].attributes.ticks = 1:13
     current_figure()
 end
-current_axis().attributes
+
+let
+    results = groupby(results_33, :k)
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel="Recall", ylabel="Precision")
+    for (i, group) in enumerate(results)
+        scatterlines!(ax, group.cm .|> recall, group.cm .|> precision, label="$i", cycle=[:color, :marker])
+    end
+    Legend(fig[1, 2], ax, "Value of k")
+    current_axis().aspect = 1
+    current_axis().xticks = [0.8, 0.85, 0.9, 0.95, 0.99]
+    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
+    
+    current_figure()
+end
 
 
 
@@ -341,8 +362,14 @@ begin
 end
 
 #ToDo 3.3.3 Discuss the results from 3.3.1 and 3.3.2. What do you think would be the most important part of a digit recognition system. Precision or recall? Please discuss in what situations would the different factors be more important?
+bm = @benchmark 1+1
 
-
+let 
+    tts = TrainTestSplit(pictures, 1//1)
+    global bm = @benchmark classify(tts, k=3)
+    println(bm)
+    bm
+end
 #? 3.1: K-means clustering
 #ToDo 3.1.1 Try to improve the performance on 2-person (disjunct) dataset (you can select any 2 person data for this) using K-means clustering. Perform K- means clustering of each cipher individually for the training set, in order to represent the training data as a number of cluster centroids. Now perform the training of the k-NN using the centroids of these clusters. You can try with different cluster sizes and see the resulting performance.
 
