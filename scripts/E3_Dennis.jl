@@ -116,16 +116,15 @@ end
 using PrettyTables, ProgressMeter
 using OffsetArrays
 
-function confmat(tts::TrainTestSplit; kwargs...)
-    preds = classify(tts; kwargs...)
-    truths = testclasses(tts)
+
+function confmat(preds::AbstractVector, truths::AbstractVector)
     inds_missings = findall(ismissing, preds)
     missing_counts = OffsetArray(fill(0, 10), 0:9)
     for i in inds_missings
         missing_counts[truths[i]] += 1
     end
-    deleteat!(preds, inds_missings)
-    deleteat!(truths, inds_missings)
+    preds = deleteat!(collect(preds), inds_missings)
+    truths = deleteat!(collect(truths), inds_missings)
     confusion_matrix = fill(0, (10, 10))
     for i in eachindex(truths)
         confusion_matrix[truths[i]+1, preds[i]+1] += 1
@@ -133,12 +132,14 @@ function confmat(tts::TrainTestSplit; kwargs...)
     return confusion_matrix, missing_counts
 end
 
+confmat(tts::TrainTestSplit; kwargs...) = confmat(classify(tts; kwargs...), testclasses(tts))
+
 function print_confmat(cm::AbstractMatrix)
     cm = Matrix{Union{String, Int}}(cm)
     cm = [cm; sum(cm, dims=1)]
     cm = [cm sum(cm, dims=2)]
     cm = [[["$i" for i in 0:9]; "Sum"] cm]
-    cm = [["          Actual\nPredicted  " reshape(["$i" for i in 0:9], (1, 10)) "Sum"]; cm]
+    cm = [["          Predicted\nActual " reshape(["$i" for i in 0:9], (1, 10)) "Sum"]; cm]
     pretty_table(cm, noheader=true, alignment=:c, body_hlines=[1, 11], linebreaks=true)
 end
 
@@ -168,8 +169,8 @@ begin
 end
 
 function accuracy(cm::AbstractMatrix)
-    @assert size(cm) == (10, 10) "Expected a 10x10 confusion matric"
-    sum(cm[i, i] for i in 1:10) / sum(cm, dims=(1, 2))[1]
+    @assert size(cm, 1) == size(cm, 2) "Expected a square confusion matrix"
+    sum(cm[i, i] for i in axes(cm, 1)) / sum(cm, dims=(1, 2))[1]
 end
 
 begin
@@ -195,7 +196,8 @@ end
 
 begin
     plt = visual(Scatter, colormap=:thermal) * AlgebraOfGraphics.data(results_33)
-    plt *= mapping(:missing_counts => sum => "Missing counts", :cm => accuracy => "Accuracy", color=:l)
+    # plt *= mapping(:missing_counts => sum => "Missing counts", :cm => accuracy => "Accuracy", color=:l => "Threshold l")
+    plt *= mapping(:missing_counts => (x->(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)) - sum(x))/(length(pictures)/params.step * (params.parts_test / (params.parts_train + params.parts_test)))) => "Proportion of points classified", :cm => accuracy => "Accuracy", color=:l => "Threshold l")
     draw(plt)
     current_axis().title = title = "$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split"
     current_figure().content[2].attributes.ticks = 1:13
@@ -207,7 +209,6 @@ end
 import Base: precision
 function precision(cm::Matrix, return_avg=true)
     @assert size(cm, 1) == size(cm, 2) "Expected a square matrix"
-    @assert true ∉ isnan.(cm)  "NaN values in input matrix. Dealing with them is not implemented."
     tps = [cm[i, i] for i in axes(cm, 1)]  # Diagonal elements
     fps = sum(cm, dims=1) .- tps    # Sum columns (assumed to be predictions) while removing true positives
     precisions = [tps[i] / (tps[i] + fps[i]) for i in axes(cm, 1)]
@@ -216,7 +217,6 @@ end
 
 function recall(cm::Matrix, return_avg=true)
     @assert size(cm, 1) == size(cm, 2) "Expected a square matrix"
-    @assert true ∉ isnan.(cm)  "NaN values in input matrix. Dealing with them is not implemented."
     tps = [cm[i, i] for i in axes(cm, 1)]  # Diagonal elements
     fns = sum(cm, dims=2) .- tps    # Sum columns (assumed to be truths) while removing true positives
     precisions = [tps[i] / (tps[i] + fns[i]) for i in axes(cm, 1)]
@@ -263,9 +263,6 @@ let
         scatterlines!(ax, group.cm .|> recall, group.cm .|> precision, label="$i", cycle=[:color, :marker])
     end
     Legend(fig[1, 2], ax, "Value of k")
-    current_axis().aspect = 1
-    current_axis().xticks = [0.8, 0.85, 0.9, 0.95, 0.99]
-    current_axis().yticks = [0.8, 0.85, 0.9, 0.95, 0.99]
     
     current_figure()
 end
