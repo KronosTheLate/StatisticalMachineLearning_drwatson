@@ -33,6 +33,7 @@ numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics
 
 ##!======================================================!##
 
+
 #?  3.2: Hierarchical clustering
 ##?  3.2.1 Show a low level dendrogram containing 5 instances of each digit
 #?( one person ).
