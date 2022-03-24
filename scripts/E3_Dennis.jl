@@ -250,7 +250,7 @@ let
     plt1 = plt * mapping(:rec=>"Recall", :prec=>"Precision")
     plt1 *= mapping(color=:l=>"Threshold l")
 
-    plt2 = plt * mapping(:k=>"k", :F1=>"F1 score")
+    plt2 = plt * macpping(:k=>"k", :F1=>"F1 score")
     plt2 *= mapping(color=:l=>"Threshold l")
 
     plt3 = plt * mapping(:k=>"k", :l=>"Threshold l")
