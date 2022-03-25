@@ -38,13 +38,14 @@ nothing
 
 #¤ Decision trees
 using DecisionTree, MLJ
-DecisionTreeClassifier = @load DecisionTreeClassifier pkg=DecisionTree
+Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
 MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
 tts = TrainTestSplit(pictures[1:10:end], 1//1)
-
-X, y = @load_iris
-y
-tree = DecisionTreeClassifier()
+traindata = tts.train|>datamat|>transpose|>MLJ.table
+trainlabels = tts|>trainclasses |> categorical
+tree = Tree()
+# X, y = @load_iris  # To check format
+##
 begin
     traindata = tts.train|>datamat|>transpose |> collect
     cols = collect(eachcol(traindata))
@@ -54,7 +55,7 @@ begin
     cols = collect(eachcol(testdata))
     testdata = NamedTuple([Symbol(i)=>cols[i] for i in axes(testdata, 2)])
 end
-trainlabels = tts|>trainclasses |> categorical
+
 
 mach = machine(tree, traindata, trainlabels)
 MLJ.fit!(mach)
