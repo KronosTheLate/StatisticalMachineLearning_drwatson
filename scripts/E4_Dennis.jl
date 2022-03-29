@@ -40,10 +40,11 @@ nothing
 using DecisionTree, MLJ
 Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
 MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
-tts = TrainTestSplit(pictures[1:10:end], 1//1)
+tts = TrainTestSplit(pictures[1:1:end], 1//1)
 traindata = tts.train|>datamat|>transpose|>MLJ.table
 testdata = tts.test|>datamat|>transpose|>MLJ.table
 trainlabels = coerce(tts|>trainclasses, Multiclass)
+testlabels = coerce(tts|>testclasses, Multiclass)
 tree = Tree()
 info(Tree)
 #=
@@ -53,16 +54,18 @@ input_scitype =
 =#
 # X, y = @load_iris  # To check format
 ##
-
+using Statistics: mean
 
 mach = machine(tree, traindata, trainlabels)
 MLJ.fit!(mach, force=true)
 ŷ = MLJ.predict_mode(mach, testdata)
-report(mach)
+mean(ŷ .== testlabels)
+# report(mach)
+print_tree(mach.fitresult[1])
+Accuracy()
+MLJ.evaluate(mach, testdata, testlabels)
 MLJ.evaluate!(mach, measures=[accuracy])
-0.415
-0.413
-
+print_tree
 
 #¤  Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 #¤  compute the information gain associated to it (plot 5 graphs, one for each component, and show 
