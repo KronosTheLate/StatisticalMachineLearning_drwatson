@@ -70,7 +70,6 @@ begin
         @show outdim
         mach_pca = machine(PCA(maxoutdim=outdim), traindata)
         MLJ.fit!(mach_pca)
-        mach_pca
         traindata_projected = MLJ.transform(mach_pca, traindata)
         testdata_projected = MLJ.transform(mach_pca, testdata)
 
@@ -99,9 +98,19 @@ begin
     axislegend(position=(1, 0))
     fig
 end
-# report(mach)
-print_tree(mach.fitresult[1])
-Accuracy()
+## report(mach_tree)
+mach_pca = machine(PCA(maxoutdim=5), traindata)
+MLJ.fit!(mach_pca)
+
+traindata_projected = MLJ.transform(mach_pca, traindata)
+testdata_projected = MLJ.transform(mach_pca, testdata)
+
+info(Tree)
+mach_tree = machine(Tree(max_depth=3, post_prune=true), traindata_projected, trainlabels)
+MLJ.fit!(mach_tree)
+ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
+print_tree(mach_tree.fitresult[1])
+
 MLJ.evaluate(mach, testdata, testlabels)
 MLJ.evaluate!(mach, measures=[accuracy])
 print_tree
