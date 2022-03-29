@@ -38,7 +38,7 @@ nothing
 
 #¤ Decision trees
 using DecisionTree, MLJ
-
+models("DecisionTree")
 MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
 Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
 info(Tree)
@@ -53,6 +53,8 @@ testdata = tts.test|>datamat|>transpose|>MLJ.table
 trainlabels = coerce(tts|>trainclasses, Multiclass)
 testlabels = coerce(tts|>testclasses, Multiclass)
 
+#¤ Test for train and test
+#¤ Vary tree depth (flexibility) instead of nPCs
 
 #=
 input_scitype =
@@ -110,10 +112,6 @@ mach_tree = machine(Tree(max_depth=3, post_prune=true), traindata_projected, tra
 MLJ.fit!(mach_tree)
 ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
 print_tree(mach_tree.fitresult[1])
-
-MLJ.evaluate(mach, testdata, testlabels)
-MLJ.evaluate!(mach, measures=[accuracy])
-print_tree
 
 ##
 
