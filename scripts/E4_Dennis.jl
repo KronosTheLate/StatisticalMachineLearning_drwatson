@@ -38,15 +38,22 @@ nothing
 
 #¤ Decision trees
 using DecisionTree, MLJ
-Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
+
 MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
-tts = TrainTestSplit(pictures[1:1:end], 1//1)
+Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
+info(Tree)
+
+MLJ.doc("PCA", pkg="MultivariateStats")
+PCA = MLJ.@load PCA pkg=MultivariateStats
+
+params = (step = 1, parts_train=1, parts_test=1)
+tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
 traindata = tts.train|>datamat|>transpose|>MLJ.table
 testdata = tts.test|>datamat|>transpose|>MLJ.table
 trainlabels = coerce(tts|>trainclasses, Multiclass)
 testlabels = coerce(tts|>testclasses, Multiclass)
-tree = Tree()
-info(Tree)
+
+
 #=
 input_scitype =
      Table{<:Union{AbstractVector{<:Count}, AbstractVector{<:OrderedFactor}, AbstractVector{<:Continuous}}},
@@ -56,16 +63,50 @@ input_scitype =
 ##
 using Statistics: mean
 
-mach = machine(tree, traindata, trainlabels)
-MLJ.fit!(mach, force=true)
-ŷ = MLJ.predict_mode(mach, testdata)
-mean(ŷ .== testlabels)
+info(PCA)
+begin
+    results = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
+    for outdim in [1, (5:5:50)...]
+        @show outdim
+        mach_pca = machine(PCA(maxoutdim=outdim), traindata)
+        MLJ.fit!(mach_pca)
+        mach_pca
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        mach_tree = machine(Tree(), traindata_projected, trainlabels)
+        MLJ.fit!(mach_tree)
+        ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
+
+        local_result = [metric()(ŷ, testlabels) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        pushfirst!(local_result, outdim)
+        push!(results, local_result)
+        # for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]
+            # print(lpad(string(metric, " :  "), 30))
+            # round(metric()(ŷ, testlabels), sigdigits=5) |> println
+        #     push!(results, round(metric()(ŷ, testlabels), sigdigits=5) |> println
+        # end
+    end
+end
+results
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
+    scatterlines!(ax, results[:, 1], results[:, 2], label="Accuracy")
+    scatterlines!(ax, results[:, 1], results[:, 3], label="Precision")
+    scatterlines!(ax, results[:, 1], results[:, 4], label="Recall")
+    axislegend(position=(1, 0))
+    fig
+end
 # report(mach)
 print_tree(mach.fitresult[1])
 Accuracy()
 MLJ.evaluate(mach, testdata, testlabels)
 MLJ.evaluate!(mach, measures=[accuracy])
 print_tree
+
+##
 
 #¤  Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 #¤  compute the information gain associated to it (plot 5 graphs, one for each component, and show 
