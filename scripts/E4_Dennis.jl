@@ -66,7 +66,8 @@ input_scitype =
 using Statistics: mean
 
 info(PCA)
-begin
+
+begin #¤ Seeing how many PCs is good:
     results = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
     for outdim in [1, (5:5:50)...]
         @show outdim
@@ -90,7 +91,6 @@ begin
     end
 end
 results
-
 begin
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
@@ -100,15 +100,83 @@ begin
     axislegend(position=(1, 0))
     fig
 end
-## report(mach_tree)
-mach_pca = machine(PCA(maxoutdim=5), traindata)
-MLJ.fit!(mach_pca)
 
+begin #¤ Zooming in on optimal number of PCs. 16 is best
+    results2 = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
+    for outdim in 12:20
+        @show outdim
+        mach_pca = machine(PCA(maxoutdim=outdim), traindata)
+        MLJ.fit!(mach_pca)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        mach_tree = machine(Tree(), traindata_projected, trainlabels)
+        MLJ.fit!(mach_tree)
+        ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
+
+        local_result = [metric()(ŷ, testlabels) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        pushfirst!(local_result, outdim)
+        push!(results2, local_result)
+    end
+end
+results2
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
+    scatterlines!(ax, results2[:, 1], results2[:, 2], label="Accuracy")
+    scatterlines!(ax, results2[:, 1], results2[:, 3], label="Precision")
+    scatterlines!(ax, results2[:, 1], results2[:, 4], label="Recall")
+    axislegend(position=(1, 0))
+    fig
+end
+
+info(Tree)
+begin
+    results3 = DataFrame(treedepth=Int[], acc=Float64[], testset=Bool[])
+    for depth in 1:20
+        @show depth
+        mach_pca = machine(PCA(maxoutdim=16), traindata)
+        MLJ.fit!(mach_pca)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        mach_tree = machine(Tree(max_depth=depth), traindata_projected, trainlabels)
+        MLJ.fit!(mach_tree)
+        ŷ_test  = MLJ.predict_mode(mach_tree,  testdata_projected)
+        ŷ_train = MLJ.predict_mode(mach_tree, traindata_projected)
+
+        acc_test =  Accuracy()(ŷ_test , testlabels)
+        acc_train = Accuracy()(ŷ_train, trainlabels)
+        push!(results3, [depth, acc_test, true])
+        push!(results3, [depth, acc_train, false])
+    end
+end
+
+begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel="Tree depth", ylabel="Accuracy", title="Decision tree classifier\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
+    let
+        data = filter(row->row.testset, results3)
+        scatterlines!(ax, data.treedepth, data.acc, label="Test")
+    end
+    let
+        data = filter(row->!row.testset, results3)
+        scatterlines!(ax, data.treedepth, data.acc, label="Train")
+    end
+    axislegend("Validation with", position=(1, 0.2))
+    fig
+end
+results3.testset
+## report(mach_tree)
+mach_pca = machine(PCA(maxoutdim=16), traindata)
+MLJ.fit!(mach_pca)
+mach_pca
 traindata_projected = MLJ.transform(mach_pca, traindata)
+traindata_projected
 testdata_projected = MLJ.transform(mach_pca, testdata)
 
 info(Tree)
-mach_tree = machine(Tree(max_depth=3, post_prune=true), traindata_projected, trainlabels)
+mach_tree = machine(Tree(max_depth=3), traindata_projected, trainlabels)
 MLJ.fit!(mach_tree)
 ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
 print_tree(mach_tree.fitresult[1])
@@ -125,3 +193,7 @@ print_tree(mach_tree.fitresult[1])
 #¤  Using the full data set (i.e. dataset from multiple people), evaluate a trained 
 #¤  decision tree using cross validation. Try to train a tree with PCA, and without PCA 
 #¤  (raw data). Discuss the important parameters.
+
+#¤ Random forests
+#¤ Create a Random Forest classifier and evaluate it using cross validation. Discuss the critical parameters of “randomForest” (e.g. number and depth of trees)
+#¤ Random forest with first 5 principal components
