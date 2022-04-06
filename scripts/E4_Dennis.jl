@@ -172,17 +172,22 @@ mach_pca = machine(PCA(maxoutdim=16), traindata)
 MLJ.fit!(mach_pca)
 mach_pca
 traindata_projected = MLJ.transform(mach_pca, traindata)
-traindata_projected
 testdata_projected = MLJ.transform(mach_pca, testdata)
 
 info(Tree)
-mach_tree = machine(Tree(max_depth=3), traindata_projected, trainlabels)
 MLJ.fit!(mach_tree)
 ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
-print_tree(mach_tree.fitresult[1])
-
+# print_tree(mach_tree.fitresult[1])
+# typeof(mach_tree.fitresult[1])
 ##
-
+mach_tree = machine(Tree(max_depth=16), traindata_projected, trainlabels)
+eval_res = evaluate!(mach_tree,# testdata, testlabels,
+         resampling=CV(nfolds=10),
+         measure=[Accuracy(), MulticlassPrecision(), MulticlassTruePositiveRate()]
+)
+eval_res
+eval_res.train_test_rows
+eval_res.report_per_fold
 #¤  Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 #¤  compute the information gain associated to it (plot 5 graphs, one for each component, and show 
 #¤  the highest information gain). See slides for how to compute information gain.
