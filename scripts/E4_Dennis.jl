@@ -193,73 +193,73 @@ results3.testset
 GLMakie.inline!(true)
 # for treedepth ∈ 2:2:10, n_PCs ∈ [5, 10, 15, 20]
 using ProgressMeter
-let
-    treedepth = 20
+
+
+for treedepth ∈ 3:3
     n_PCs = 20
     n_batches = 10
+    my_pics = pictures[begin:1:end]
+    batchinds = batch(shuffle(eachindex(my_pics)), n_batches, false)
+    alldata = hcat(my_pics.data...)' |> MLJ.table
+    alllabels = coerce(my_pics.class, Multiclass)
+    global result_each_batch = Vector{Vector}(undef, n_batches)
 
-    batchinds = batch(shuffle(eachindex(pictures)), n_batches, false)
-    alldata = hcat(pictures.data...)' |> MLJ.table
-    alllabels = coerce(pictures.class, Multiclass)
-    result_each_batch = Vector{Matrix{Float64}}(undef, 10)
     @showprogress for i in 1:n_batches
         
         testdata   = selectrows(alldata,   batchinds[i])
         testlabels = selectrows(alllabels, batchinds[i])
 
-        other_9_inds = vcat(deleteat!(copy(batchinds), i)...)
+        other_inds = vcat(deleteat!(copy(batchinds), i)...)
         traindata   = selectrows(alldata,   other_9_inds)
         trainlabels = selectrows(alllabels, other_9_inds)
 
         mach_pca = machine(PCA(maxoutdim=n_PCs), traindata)
-        MLJ.fit!(mach_pca)
+        MLJ.fit!(mach_pca, verbosity=0)
         traindata_projected = MLJ.transform(mach_pca, traindata)
         testdata_projected = MLJ.transform(mach_pca, testdata)
 
         mach_tree_PCA = machine(Tree(max_depth=treedepth), traindata_projected, trainlabels)
-        MLJ.fit!(mach_tree_PCA)
+        MLJ.fit!(mach_tree_PCA, verbosity=0)
 
         mach_tree = machine(Tree(max_depth=treedepth), traindata, trainlabels)
-        MLJ.fit!(mach_tree)
-
+        MLJ.fit!(mach_tree, verbosity=0)
         
-        datasets = [testdata, traindata]
-        labelsets = [testlabels, trainlabels]
-        machs = [mach_tree, mach_tree_PCA]
-        
-        metric = Accuracy()
-        accs = Matrix{Float64}(undef, length(datasets), length(machs))
+        accs = Vector{Float64}(undef, 4)
+        accs[1] = mean(predict_mode(mach_tree,      testdata) .== testlabels)
+        accs[2] = mean(predict_mode(mach_tree,     traindata) .== trainlabels)
+        accs[3] = mean(predict_mode(mach_tree_PCA,  testdata_projected) .== testlabels)
+        accs[4] = mean(predict_mode(mach_tree_PCA, traindata_projected) .== trainlabels)
 
-        for i in eachindex(datasets)
-            for j in eachindex(machs)
-                ŷ = predict_mode(machs[j], datasets[i])
-                y = labelsets[i]
-                accs[i, j] = metric(ŷ, y)
-            end
-        end
         result_each_batch[i] = accs
     end
-end
-result_each_batch
-meanstd(x) = [mean(x)], [std(x)]
-let 
+    result_each_batch = result_each_batch .|> identity
+
+# result_each_batch
+
+
+    result_each_batch_cat = hcat(result_each_batch...)
+    accs1 = result_each_batch_cat[1, :]
+    accs2 = result_each_batch_cat[2, :]
+    accs3 = result_each_batch_cat[3, :]
+    accs4 = result_each_batch_cat[4, :]
     fig = Figure()
     ax = Axis(fig[1, 1])
     whiskerwidth=10
-    errorbars!(ax, [1], meanstd(accs1)...; whiskerwidth, label="Test,  with PCA")
-    errorbars!(ax, [2], meanstd(accs2)...; whiskerwidth, label="Train, with PCA")
-    errorbars!(ax, [3], meanstd(accs3)...; whiskerwidth, label="Test,  without PCA")
-    errorbars!(ax, [4], meanstd(accs4)...; whiskerwidth, label="Train, without PCA")
-    scatter!(ax, [1], [mean(accs1)]; whiskerwidth, label="Test,  with PCA")
-    scatter!(ax, [2], [mean(accs2)]; whiskerwidth, label="Train, with PCA")
-    scatter!(ax, [3], [mean(accs3)]; whiskerwidth, label="Test,  without PCA")
-    scatter!(ax, [4], [mean(accs4)]; whiskerwidth, label="Train, without PCA")
+    spacing = 0.03
+    errorbars!(ax, [1-spacing], [mean(accs1)], [std(accs1)]; whiskerwidth, label="No PCA")
+    errorbars!(ax, [2-spacing], [mean(accs2)], [std(accs2)]; whiskerwidth, label="No PCA")
+    errorbars!(ax, [1+spacing], [mean(accs3)], [std(accs3)]; whiskerwidth, label="PCA")
+    errorbars!(ax, [2+spacing], [mean(accs4)], [std(accs4)]; whiskerwidth, label="PCA")
+    scatter!(ax,   [1-spacing], [mean(accs1)]; color=Cycled(1), label="No PCA")
+    scatter!(ax,   [2-spacing], [mean(accs2)]; color=Cycled(1), label="No PCA")
+    scatter!(ax,   [1+spacing], [mean(accs3)]; color=Cycled(2), label="PCA")
+    scatter!(ax,   [2+spacing], [mean(accs4)]; color=Cycled(2), label="PCA")
     axislegend(position=(1, 0.4), merge=true)
+    xlims!(0.5, 2.5)
     ax.ylabel = "Accuracy"
     ax.title = "Number of PCs: $n_PCs\nTree depth: $treedepth"
-    ax.xticks = [-1]
+    ax.xticks = ([1, 2], ["Test", "Train"])
     display(fig)
-    sleep(1)
 end
 
 ##
