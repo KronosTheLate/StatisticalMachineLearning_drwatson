@@ -29,8 +29,25 @@ end
 using BenchmarkHistograms
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
-numbersearch(pics::Vector{<:Picture}, nr) = (filter(pic -> pic.class == nr, pics))
+numbersearch(pics::Vector{<:Picture}, nr) = filter(pic -> pic.class == nr, pics)
+
+using Distributions
+function myqqplot(observations, dist = Normal; title = "QQ plot")
+    n = length(observations)
+    xlabel = (dist == Normal ? "Fitted normal distribution values" : "Theoretical distribution")
+    xvals = [quantile(fit(dist, observations), i / n) for i = 1:n-1]
+    yvals = [quantile(observations, i / n) for i = 1:n-1]
+    scatter(xvals, yvals, label = "Quantile ",
+        axis = (xlabel = xlabel, ylabel = "Observation values", title = title)
+    )
+    coeffs = [ones(length(xvals)) xvals] \ yvals  # The same as a least squares fit.
+    lines!(xvals, x -> coeffs[1] + coeffs[2] * x, label = "Least squares linear fit")
+    axislegend(position = (1, 0))
+    current_figure()
+end
+
 nothing
+
 
 ##!======================================================!##
 #? Discretize the range of values of principle componten coefficient in e.g. 200
@@ -101,7 +118,9 @@ begin
     fig
 end
 
-begin #¤ Zooming in on optimal number of PCs. 16 is best
+##
+
+begin #¤ Zooming in on optimal number of PCs. 16-20… is best
     results2 = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
     for outdim in 12:20
         @show outdim
@@ -130,8 +149,9 @@ begin
     fig
 end
 
+##
 info(Tree)
-begin
+begin  #¤ Varying tree depth
     results3 = DataFrame(treedepth=Int[], acc=Float64[], testset=Bool[])
     for depth in 1:20
         @show depth
@@ -167,25 +187,72 @@ begin
     fig
 end
 results3.testset
-## report(mach_tree)
+
+##
+# report(mach_tree)
 mach_pca = machine(PCA(maxoutdim=16), traindata)
 MLJ.fit!(mach_pca)
 mach_pca
 traindata_projected = MLJ.transform(mach_pca, traindata)
 testdata_projected = MLJ.transform(mach_pca, testdata)
 
-info(Tree)
+# info(Tree)
+mach_tree = machine(Tree(max_depth=16), traindata_projected, trainlabels)
 MLJ.fit!(mach_tree)
 ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
+mean(ŷ .== testlabels)
 # print_tree(mach_tree.fitresult[1])
 # typeof(mach_tree.fitresult[1])
 ##
-mach_tree = machine(Tree(max_depth=16), traindata_projected, trainlabels)
-eval_res = evaluate!(mach_tree,# testdata, testlabels,
+begin
+    n_batches = 10
+    metric = Accuracy()
+    testbachinds = batch(shuffle(eachindex(testlabels)), n_batches, false)
+    testbatches = selectrows.([testdata_projected], testbachinds)
+    accs = Vector{Float64}(undef, n_batches)
+    for i in eachindex(testbachinds)
+        testdata_batch = selectrows(testdata_projected, testbachinds[i])
+        testlabel_batch = selectrows(testlabels, testbachinds[i])
+        ŷ = MLJ.predict_mode(mach_tree, testdata_batch)
+        y = testlabel_batch
+        accs[i] = metric(ŷ, y)
+    end
+    accs
+end
+
+
+
+
+
+eval_res = evaluate!(mach_tree, testdata, testlabels,
          resampling=CV(nfolds=10),
          measure=[Accuracy(), MulticlassPrecision(), MulticlassTruePositiveRate()]
 )
-eval_res
+
+mach_tree_noPCA = machine(Tree(max_depth=16), traindata, trainlabels)
+MLJ.fit!(mach_tree_noPCA)
+
+eval_res_noPCA = evaluate!(mach_tree_noPCA,# testdata, testlabels,
+         resampling=CV(nfolds=10),
+         measure=[Accuracy(), MulticlassPrecision(), MulticlassTruePositiveRate()]
+)
+
+myqqplot(eval_res.per_fold[3])
+let
+    fig = Figure()
+    μs = mean.(eval_res.per_fold)
+    σs = std.(eval_res.per_fold)
+    ax, plt1 = errorbars(fig[1, 1], eachindex(eval_res.per_fold), μs, σs, whiskerwidth=15, color=:green, label="With PCA")
+    plt2 = scatter!(ax, eachindex(eval_res.per_fold), μs, color=:green, label="With PCA")
+    μs_noPCA = mean.(eval_res_noPCA.per_fold)
+    σs_noPCA = std.(eval_res_noPCA.per_fold)
+    plt3 = errorbars!(ax, eachindex(eval_res_noPCA.per_fold), μs_noPCA, σs_noPCA, whiskerwidth=15, color=:red, label="Without PCA")
+    plt2 = scatter!(ax, eachindex(eval_res_noPCA.per_fold), μs_noPCA, color=:red, label="Without PCA")
+    ax.xticks = (1:3, ["Accuracy", "Precision", "Recall"])
+    xlims!(0.8, 3.2)
+    axislegend(merge=true, position=(1, 0.55))
+    fig
+end
 eval_res.train_test_rows
 eval_res.report_per_fold
 #¤  Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
