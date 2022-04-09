@@ -190,39 +190,79 @@ results3.testset
 
 ##
 # report(mach_tree)
-mach_pca = machine(PCA(maxoutdim=16), traindata)
-MLJ.fit!(mach_pca)
-mach_pca
-traindata_projected = MLJ.transform(mach_pca, traindata)
-testdata_projected = MLJ.transform(mach_pca, testdata)
-
-# info(Tree)
-mach_tree = machine(Tree(max_depth=16), traindata_projected, trainlabels)
-MLJ.fit!(mach_tree)
-ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
-mean(ŷ .== testlabels)
-# print_tree(mach_tree.fitresult[1])
-# typeof(mach_tree.fitresult[1])
-##
-begin
+GLMakie.inline!(true)
+# for treedepth ∈ 2:2:10, n_PCs ∈ [5, 10, 15, 20]
+using ProgressMeter
+let
+    treedepth = 20
+    n_PCs = 20
     n_batches = 10
-    metric = Accuracy()
-    testbachinds = batch(shuffle(eachindex(testlabels)), n_batches, false)
-    testbatches = selectrows.([testdata_projected], testbachinds)
-    accs = Vector{Float64}(undef, n_batches)
-    for i in eachindex(testbachinds)
-        testdata_batch = selectrows(testdata_projected, testbachinds[i])
-        testlabel_batch = selectrows(testlabels, testbachinds[i])
-        ŷ = MLJ.predict_mode(mach_tree, testdata_batch)
-        y = testlabel_batch
-        accs[i] = metric(ŷ, y)
+
+    batchinds = batch(shuffle(eachindex(pictures)), n_batches, false)
+    alldata = hcat(pictures.data...)' |> MLJ.table
+    alllabels = coerce(pictures.class, Multiclass)
+    result_each_batch = Vector{Matrix{Float64}}(undef, 10)
+    @showprogress for i in 1:n_batches
+        
+        testdata   = selectrows(alldata,   batchinds[i])
+        testlabels = selectrows(alllabels, batchinds[i])
+
+        other_9_inds = vcat(deleteat!(copy(batchinds), i)...)
+        traindata   = selectrows(alldata,   other_9_inds)
+        trainlabels = selectrows(alllabels, other_9_inds)
+
+        mach_pca = machine(PCA(maxoutdim=n_PCs), traindata)
+        MLJ.fit!(mach_pca)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        mach_tree_PCA = machine(Tree(max_depth=treedepth), traindata_projected, trainlabels)
+        MLJ.fit!(mach_tree_PCA)
+
+        mach_tree = machine(Tree(max_depth=treedepth), traindata, trainlabels)
+        MLJ.fit!(mach_tree)
+
+        
+        datasets = [testdata, traindata]
+        labelsets = [testlabels, trainlabels]
+        machs = [mach_tree, mach_tree_PCA]
+        
+        metric = Accuracy()
+        accs = Matrix{Float64}(undef, length(datasets), length(machs))
+
+        for i in eachindex(datasets)
+            for j in eachindex(machs)
+                ŷ = predict_mode(machs[j], datasets[i])
+                y = labelsets[i]
+                accs[i, j] = metric(ŷ, y)
+            end
+        end
+        result_each_batch[i] = accs
     end
-    accs
+end
+result_each_batch
+meanstd(x) = [mean(x)], [std(x)]
+let 
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    whiskerwidth=10
+    errorbars!(ax, [1], meanstd(accs1)...; whiskerwidth, label="Test,  with PCA")
+    errorbars!(ax, [2], meanstd(accs2)...; whiskerwidth, label="Train, with PCA")
+    errorbars!(ax, [3], meanstd(accs3)...; whiskerwidth, label="Test,  without PCA")
+    errorbars!(ax, [4], meanstd(accs4)...; whiskerwidth, label="Train, without PCA")
+    scatter!(ax, [1], [mean(accs1)]; whiskerwidth, label="Test,  with PCA")
+    scatter!(ax, [2], [mean(accs2)]; whiskerwidth, label="Train, with PCA")
+    scatter!(ax, [3], [mean(accs3)]; whiskerwidth, label="Test,  without PCA")
+    scatter!(ax, [4], [mean(accs4)]; whiskerwidth, label="Train, without PCA")
+    axislegend(position=(1, 0.4), merge=true)
+    ax.ylabel = "Accuracy"
+    ax.title = "Number of PCs: $n_PCs\nTree depth: $treedepth"
+    ax.xticks = [-1]
+    display(fig)
+    sleep(1)
 end
 
-
-
-
+##
 
 eval_res = evaluate!(mach_tree, testdata, testlabels,
          resampling=CV(nfolds=10),
