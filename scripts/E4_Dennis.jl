@@ -13,9 +13,7 @@ end
 activate_dir()
 
 using DrWatson
-for file in readdir(srcdir())
-    include(joinpath(srcdir(), file))
-end
+for file in readdir(srcdir()); include(joinpath(srcdir(), file)); end
 
 begin
     ciphers, ciphersdir = produce_or_load(datadir(), NamedTuple(), prefix="ciphers33", suffix="jld2") do config
@@ -55,20 +53,21 @@ nothing
 
 #¤ Decision trees
 using DecisionTree, MLJ
-models("DecisionTree")
-MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
 Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
-info(Tree)
-
-MLJ.doc("PCA", pkg="MultivariateStats")
 PCA = MLJ.@load PCA pkg=MultivariateStats
+
+# models("DecisionTree")
+# MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
+# info(Tree)
+
+# MLJ.doc("PCA", pkg="MultivariateStats")
 
 params = (step = 1, parts_train=1, parts_test=1)
 tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
-traindata = tts.train|>datamat|>transpose|>MLJ.table
-testdata = tts.test|>datamat|>transpose|>MLJ.table
-trainlabels = coerce(tts|>trainclasses, Multiclass)
-testlabels = coerce(tts|>testclasses, Multiclass)
+# traindata = tts.train|>datamat|>transpose|>MLJ.table
+# testdata = tts.test|>datamat|>transpose|>MLJ.table
+# trainlabels = coerce(tts|>trainclasses, Multiclass)
+# testlabels = coerce(tts|>testclasses, Multiclass)
 
 #¤ Test for train and test
 #¤ Vary tree depth (flexibility) instead of nPCs
@@ -82,7 +81,7 @@ input_scitype =
 ##
 using Statistics: mean
 
-info(PCA)
+# info(PCA)
 
 begin #¤ Seeing how many PCs is good:
     results = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
@@ -195,8 +194,9 @@ GLMakie.inline!(true)
 using ProgressMeter
 
 
-for treedepth ∈ 3:3
-    n_PCs = 20
+for treedepth ∈ 1:2:20
+# let treedepth = 3
+    n_PCs = 16
     n_batches = 10
     my_pics = pictures[begin:1:end]
     batchinds = batch(shuffle(eachindex(my_pics)), n_batches, false)
@@ -210,8 +210,8 @@ for treedepth ∈ 3:3
         testlabels = selectrows(alllabels, batchinds[i])
 
         other_inds = vcat(deleteat!(copy(batchinds), i)...)
-        traindata   = selectrows(alldata,   other_9_inds)
-        trainlabels = selectrows(alllabels, other_9_inds)
+        traindata   = selectrows(alldata,   other_inds)
+        trainlabels = selectrows(alllabels, other_inds)
 
         mach_pca = machine(PCA(maxoutdim=n_PCs), traindata)
         MLJ.fit!(mach_pca, verbosity=0)
@@ -234,9 +234,6 @@ for treedepth ∈ 3:3
     end
     result_each_batch = result_each_batch .|> identity
 
-# result_each_batch
-
-
     result_each_batch_cat = hcat(result_each_batch...)
     accs1 = result_each_batch_cat[1, :]
     accs2 = result_each_batch_cat[2, :]
@@ -254,7 +251,7 @@ for treedepth ∈ 3:3
     scatter!(ax,   [2-spacing], [mean(accs2)]; color=Cycled(1), label="No PCA")
     scatter!(ax,   [1+spacing], [mean(accs3)]; color=Cycled(2), label="PCA")
     scatter!(ax,   [2+spacing], [mean(accs4)]; color=Cycled(2), label="PCA")
-    axislegend(position=(1, 0.4), merge=true)
+    axislegend(position=(1, 0), merge=true)
     xlims!(0.5, 2.5)
     ax.ylabel = "Accuracy"
     ax.title = "Number of PCs: $n_PCs\nTree depth: $treedepth"
