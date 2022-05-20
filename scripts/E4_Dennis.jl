@@ -62,7 +62,7 @@ PCA = MLJ.@load PCA pkg=MultivariateStats
 
 # MLJ.doc("PCA", pkg="MultivariateStats")
 
-params = (step = 1, parts_train=1, parts_test=1)
+params = (step = 10, parts_train=1, parts_test=1)
 tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
 # traindata = tts.train|>datamat|>transpose|>MLJ.table
 # testdata = tts.test|>datamat|>transpose|>MLJ.table
