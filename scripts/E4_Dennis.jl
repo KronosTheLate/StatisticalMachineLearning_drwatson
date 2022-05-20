@@ -66,8 +66,8 @@ PCA = MLJ.@load PCA pkg=MultivariateStats
 # MLJ.doc("PCA", pkg="MultivariateStats")
 shufflepics = pictures[shuffle(eachindex(pictures))]
 params = (step = 10, parts_train=1, parts_test=1)
-picdata = shufflepics[begin:10:end]|>datamat|>transpose|>MLJ.table
-picclasses = coerce(shufflepics.class[begin:10:end], Multiclass)
+picdata = shufflepics[begin:2:end]|>datamat|>transpose|>MLJ.table
+picclasses = coerce(shufflepics.class[begin:2:end], Multiclass)
 
 tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
 traindata = tts.train|>datamat|>transpose|>MLJ.table
@@ -105,13 +105,13 @@ traininds, testinds = partition(eachindex(picclasses), 0.9, rng=69)
 # picclasses[testinds] |> countmap
 # bla |> countmap
 begin
-    global results_train = DataFrame(max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
-    global results_test  = DataFrame(max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
+    global results_train = DataFrame(time=Float64[], max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
+    global results_test  = DataFrame(time=Float64[], max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
     for max_depth = 2:2:20
         
         for outdim in 5:5:40
             
-            
+            t0 = time()
             mach_pca = machine(PCA(maxoutdim=outdim), picdata)
             MLJ.fit!(mach_pca, rows=traininds)
             picdata_projected = MLJ.transform(mach_pca, picdata)
@@ -119,17 +119,19 @@ begin
             mach_tree = machine(Tree(; max_depth), picdata_projected, picclasses)
             MLJ.fit!(mach_tree, rows=traininds)
             ŷ = MLJ.predict_mode(mach_tree, picdata_projected)
-            global bla = ŷ
+            time_elapsed = time() - t0
             # return 0
             local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
             pushfirst!(local_result_test , outdim)
             pushfirst!(local_result_test , max_depth)
+            pushfirst!(local_result_test , time_elapsed)
             push!(results_test, local_result_test)
 
 
             local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
             pushfirst!(local_result_train, outdim)
             pushfirst!(local_result_train, max_depth)
+            pushfirst!(local_result_train , time_elapsed)
             push!(results_train, local_result_train)
 
             # for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]
@@ -154,43 +156,82 @@ begin
 draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
 current_axis().title = "Reduced test data"; current_figure()
 end
-
-fig1 = draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced train data"; current_figure()
-fig2 = draw(visual(Scatter, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced test data"; current_figure()
-current_figure() |> propertynames
-current_figure().content
-ax2 = current_axis()
-fig = Figure()
-fig[1, 1] = fig1.figure.content[1]
-fig[1, 2] = fig1.figure.content[2]
-fig[2, 1] = fig2.figure.content[1]
-fig[2, 2] = fig2.figure.content[2]
-fig1
-fig2
-fig = Figure()
-fig[1, 1] = ax1
-fig[1, 2] = ax2
-fig
-results_test
-
 begin
-    fig = Figure()
-    ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier, max depth = $(max_depth)\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
-    scatterlines!(ax, results[:, 1], results[:, 2], label="Accuracy")
-    scatterlines!(ax, results[:, 1], results[:, 3], label="Precision")
-    scatterlines!(ax, results[:, 1], results[:, 4], label="Recall")
-    axislegend(position=:rc)
-    fig
+    draw(visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:time=>"Time to train and classify (s)"))
+    current_axis().title = "Reduced data timings"; current_figure()
 end
-begin
-    plot(1:10, 1:10, label="test")
-    axislegend(position = (1, 0))
-    current_figure()
-end
+
 ##
+begin
+    global results_train = DataFrame(time=Float64[], n = Int[], bagging_fraction=Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
+    global results_test  = DataFrame(time=Float64[], n = Int[], bagging_fraction=Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
+    for n = 10:10:200
+        
+        for bagging_fraction in 0.5:0.1:1.0
+            
+            t0 = time()
+            mach_pca = machine(PCA(maxoutdim=15), picdata)
+            MLJ.fit!(mach_pca, rows=traininds)
+            picdata_projected = MLJ.transform(mach_pca, picdata)
 
+            forest = EnsembleModel(Tree(; max_depth=25); n, bagging_fraction, acceleration=CPUThreads())
+            forest_mach = machine(ensamble, picdata_projected, picclasses)
+            MLJ.fit!(forest_mach, rows=traininds)
+            ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
+            time_elapsed = time() - t0
+            # return 0
+            local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+            pushfirst!(local_result_test , bagging_fraction)
+            pushfirst!(local_result_test , n)
+            pushfirst!(local_result_test , time_elapsed)
+            push!(results_test, local_result_test)
+
+
+            local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+            pushfirst!(local_result_train, bagging_fraction)
+            pushfirst!(local_result_train, n)
+            pushfirst!(local_result_train , time_elapsed)
+            push!(results_train, local_result_train)
+        end
+    end
+end
+begin
+    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
+    current_axis().title = "Reduced train data"; current_figure()
+end
+begin
+    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
+    current_axis().title = "Reduced test data"; current_figure()
+end
+begin
+    draw(visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:time=>"Time to train and classify (s)"))
+    current_axis().title = "Reduced data timings"; current_figure()
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##
 begin #¤ Zooming in on optimal number of PCs. 16-20… is best
     results2 = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
     for outdim in 12:20
