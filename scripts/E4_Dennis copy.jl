@@ -43,7 +43,7 @@ function myqqplot(observations, dist = Normal; title = "QQ plot")
     axislegend(position = (1, 0))
     current_figure()
 end
-using Statistics: mean
+
 nothing
 
 
@@ -52,28 +52,22 @@ nothing
 
 
 #¤ Decision trees
-using MLJ
-using DecisionTree
+using DecisionTree, MLJ
 Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
 PCA = MLJ.@load PCA pkg=MultivariateStats
-
-
 
 # models("DecisionTree")
 # MLJ.doc("DecisionTreeClassifier", pkg="DecisionTree")
 # info(Tree)
 
 # MLJ.doc("PCA", pkg="MultivariateStats")
-shufflepics = pictures[shuffle(eachindex(pictures))]
-params = (step = 10, parts_train=1, parts_test=1)
-picdata = shufflepics[begin:10:end]|>datamat|>transpose|>MLJ.table
-picclasses = coerce(shufflepics.class[begin:10:end], Multiclass)
 
+params = (step = 10, parts_train=1, parts_test=1)
 tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
-traindata = tts.train|>datamat|>transpose|>MLJ.table
-testdata = tts.test|>datamat|>transpose|>MLJ.table
-trainlabels = coerce(tts|>trainclasses, Multiclass)
-testlabels = coerce(tts|>testclasses, Multiclass)
+# traindata = tts.train|>datamat|>transpose|>MLJ.table
+# testdata = tts.test|>datamat|>transpose|>MLJ.table
+# trainlabels = coerce(tts|>trainclasses, Multiclass)
+# testlabels = coerce(tts|>testclasses, Multiclass)
 
 #¤ Test for train and test
 #¤ Vary tree depth (flexibility) instead of nPCs
@@ -85,110 +79,44 @@ input_scitype =
 =#
 # X, y = @load_iris  # To check format
 ##
-
+using Statistics: mean
+using MultivariateStats
 # info(PCA)
 
+begin #¤ Seeing how many PCs is good:
+    results = DataFrame(n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
+    for outdim in [1, (5:5:50)...]
+        @show outdim
+        mach_pca = machine(PCA(maxoutdim=outdim), traindata)
+        MLJ.fit!(mach_pca)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
 
-# length(picdata)
-# eachindex(picdata)[begin:10:end]
-# mach_pca = machine(PCA(pratio=0.5), picdata)
-# MLJ.fit!(mach_pca)
-# traindata_projected = MLJ.transform(mach_pca, traindata)
-# testdata_projected = MLJ.transform(mach_pca, testdatsa)
+        mach_tree = machine(Tree(), traindata_projected, trainlabels)
+        MLJ.fit!(mach_tree)
+        ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
 
-# mach_tree = machine(Tree(; max_depth), traindata_projected, trainlabels)
-# MLJ.fit!(mach_tree)
-# ŷ = MLJ.predict_mode(mach_tree, testdata_projected)
-traininds, testinds = partition(eachindex(picclasses), 0.9, rng=69)
-# using StatsBase
-# picclasses[traininds] |> countmap
-# picclasses[testinds] |> countmap
-# bla |> countmap
-begin
-    global results_train = DataFrame(max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
-    global results_test  = DataFrame(max_depth = Int[], n_PCs=Int[], acc=Float64[], prec=Float64[], rec=Float64[])
-    for max_depth = 2:2:20
-        
-        for outdim in 5:5:40
-            
-            
-            mach_pca = machine(PCA(maxoutdim=outdim), picdata)
-            MLJ.fit!(mach_pca, rows=traininds)
-            picdata_projected = MLJ.transform(mach_pca, picdata)
-
-            mach_tree = machine(Tree(; max_depth), picdata_projected, picclasses)
-            MLJ.fit!(mach_tree, rows=traininds)
-            ŷ = MLJ.predict_mode(mach_tree, picdata_projected)
-            global bla = ŷ
-            # return 0
-            local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
-            pushfirst!(local_result_test , outdim)
-            pushfirst!(local_result_test , max_depth)
-            push!(results_test, local_result_test)
-
-
-            local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
-            pushfirst!(local_result_train, outdim)
-            pushfirst!(local_result_train, max_depth)
-            push!(results_train, local_result_train)
-
-            # for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]
-                # print(lpad(string(metric, " :  "), 30))
-                # round(metric()(ŷ, testlabels), sigdigits=5) |> println
-            #     push!(results, round(metric()(ŷ, testlabels), sigdigits=5) |> println
-            # end
-        end
+        local_result = [metric()(ŷ, testlabels) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        pushfirst!(local_result, outdim)
+        push!(results, local_result)
+        # for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]
+            # print(lpad(string(metric, " :  "), 30))
+            # round(metric()(ŷ, testlabels), sigdigits=5) |> println
+        #     push!(results, round(metric()(ŷ, testlabels), sigdigits=5) |> println
+        # end
     end
 end
-results_train
-results_test
-using AlgebraOfGraphics
-const AOG = AlgebraOfGraphics
-set_aog_theme!()
-update_theme!(resolution = (1920÷2, 1080÷3))
-begin
-draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced train data"; current_figure()
-end
-begin
-draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced test data"; current_figure()
-end
-
-fig1 = draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced train data"; current_figure()
-fig2 = draw(visual(Scatter, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
-current_axis().title = "Reduced test data"; current_figure()
-current_figure() |> propertynames
-current_figure().content
-ax2 = current_axis()
-fig = Figure()
-fig[1, 1] = fig1.figure.content[1]
-fig[1, 2] = fig1.figure.content[2]
-fig[2, 1] = fig2.figure.content[1]
-fig[2, 2] = fig2.figure.content[2]
-fig1
-fig2
-fig = Figure()
-fig[1, 1] = ax1
-fig[1, 2] = ax2
-fig
-results_test
-
+results
 begin
     fig = Figure()
-    ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier, max depth = $(max_depth)\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
+    ax = Axis(fig[1, 1], xlabel="Number of PCs", ylabel="Metric", title="Decision tree classifier\n$(length(pictures)÷params.step) pictures in total, $(params.parts_train)/$(params.parts_test) split")
     scatterlines!(ax, results[:, 1], results[:, 2], label="Accuracy")
     scatterlines!(ax, results[:, 1], results[:, 3], label="Precision")
     scatterlines!(ax, results[:, 1], results[:, 4], label="Recall")
-    axislegend(position=:rc)
+    axislegend(position=(1, 0))
     fig
 end
-begin
-    plot(1:10, 1:10, label="test")
-    axislegend(position = (1, 0))
-    current_figure()
-end
+
 ##
 
 begin #¤ Zooming in on optimal number of PCs. 16-20… is best
