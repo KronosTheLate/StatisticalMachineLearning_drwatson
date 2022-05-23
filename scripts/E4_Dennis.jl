@@ -45,7 +45,7 @@ function myqqplot(observations, dist = Normal; title = "QQ plot")
 end
 using Statistics: mean
 nothing
-
+batch(1:33, 11, false)
 
 ##!======================================================!##
 #? Discretize the range of values of principle componten coefficient in e.g. 200
