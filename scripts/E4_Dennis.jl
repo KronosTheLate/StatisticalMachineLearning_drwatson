@@ -24,6 +24,9 @@ begin
     ciphers = ciphers["ciphers"]
 end
 
+trainpics = pictures[1:100]
+testpics = pictures[101:110]
+TrainTestSplit(trainpics, testpics)
 
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)

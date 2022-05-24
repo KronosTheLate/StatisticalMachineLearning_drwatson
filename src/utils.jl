@@ -27,15 +27,16 @@ getproperty(x::Vector{<:Picture}, f::Symbol) = getproperty.(x, f)
 using Random: shuffle
 """
     TrainTestSplit(pics::AbstractVector{Picture}, train_to_test_ratio::Rational, shuffle_pics::Bool=true)
-    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture}, test::AbstractVector{Picture{T}})
+    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture}, test::AbstractVector{Picture})
+    TrainTestSplit(train::AbstractVector{Picture}, test::AbstractVector{Picture})
 """
 struct TrainTestSplit{T<:Real}
     ratio::Rational
     n::Int
     train::AbstractVector{Picture{T}}
     test::AbstractVector{Picture{T}}
-    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{<:Picture}, test::AbstractVector{<:Picture}) = new{T}(ratio, n, train, test)
-    TrainTestSplit(train::AbstractVector{<:Picture}, test::AbstractVector{<:Picture}) = new{T}(length(train)//length(test), length(train)+length(test), train, test)
+    TrainTestSplit(ratio::Rational, n::Int, train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T<:Real}= new{T}(ratio, n, train, test)
+    TrainTestSplit(train::AbstractVector{Picture{T}}, test::AbstractVector{Picture{T}}) where {T <: Real} = new{T}(length(train)//length(test), length(train)+length(test), train, test)
     function TrainTestSplit(pics::AbstractVector{Picture{T}}, train_to_test_ratio::Rational, shuffle_pics::Bool=true) where {T<:Real}
         if shuffle_pics
             pics = pics[shuffle(eachindex(pics))]
