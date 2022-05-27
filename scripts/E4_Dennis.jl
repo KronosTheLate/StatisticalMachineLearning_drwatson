@@ -24,10 +24,6 @@ begin
     ciphers = ciphers["ciphers"]
 end
 
-trainpics = pictures[1:100]
-testpics = pictures[101:110]
-TrainTestSplit(trainpics, testpics)
-
 pictures = Picture.(ciphers|>eachrow) |> remove_constant |> x->sort(x, by=y->y.class)
 person(ID) = filter(x -> x.ID == ID, pictures)
 numbersearch(pics::Vector{<:Picture}, nr) = filter(pic -> pic.class == nr, pics)
@@ -47,7 +43,12 @@ function myqqplot(observations, dist = Normal; title = "QQ plot")
     current_figure()
 end
 using Statistics: mean
-nothing
+
+using AlgebraOfGraphics
+const AOG = AlgebraOfGraphics
+set_aog_theme!()
+update_theme!(resolution = (1920÷2, 1080÷3))
+
 batch(1:33, 11, false)
 
 ##!======================================================!##
@@ -57,8 +58,9 @@ batch(1:33, 11, false)
 #¤ Decision trees
 using MLJ
 using DecisionTree
+using MultivariateStats  #! This possibly fixes the `size` method issues.
 Tree = MLJ.@load DecisionTreeClassifier pkg=DecisionTree
-PCA = MLJ.@load PCA pkg=MultivariateStats
+pca = MLJ.@load PCA pkg=MultivariateStats
 
 
 
@@ -68,15 +70,15 @@ PCA = MLJ.@load PCA pkg=MultivariateStats
 
 # MLJ.doc("PCA", pkg="MultivariateStats")
 shufflepics = pictures[shuffle(eachindex(pictures))]
-params = (step = 10, parts_train=1, parts_test=1)
-picdata = shufflepics[begin:2:end]|>datamat|>transpose|>MLJ.table
-picclasses = coerce(shufflepics.class[begin:2:end], Multiclass)
+picdata = shufflepics[begin:4:end]|>datamat|>transpose|>MLJ.table
+picclasses = coerce(shufflepics.class[begin:4:end], Multiclass)
 
-tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
-traindata = tts.train|>datamat|>transpose|>MLJ.table
-testdata = tts.test|>datamat|>transpose|>MLJ.table
-trainlabels = coerce(tts|>trainclasses, Multiclass)
-testlabels = coerce(tts|>testclasses, Multiclass)
+# params = (step = 10, parts_train=1, parts_test=1)
+# tts = TrainTestSplit(pictures[begin:params.step:end], params.parts_train//params.parts_train)
+# traindata = tts.train|>datamat|>transpose|>MLJ.table
+# testdata = tts.test|>datamat|>transpose|>MLJ.table
+# trainlabels = coerce(tts|>trainclasses, Multiclass)
+# testlabels = coerce(tts|>testclasses, Multiclass)
 
 #¤ Test for train and test
 #¤ Vary tree depth (flexibility) instead of nPCs
@@ -94,8 +96,9 @@ input_scitype =
 
 # length(picdata)
 # eachindex(picdata)[begin:10:end]
-# mach_pca = machine(PCA(pratio=0.5), picdata)
-# MLJ.fit!(mach_pca)
+mach_pca = machine(pca(pratio=0.5), picdata)
+MLJ.fit!(mach_pca, verbosity=0)
+
 # traindata_projected = MLJ.transform(mach_pca, traindata)
 # testdata_projected = MLJ.transform(mach_pca, testdatsa)
 
@@ -147,10 +150,7 @@ begin
 end
 results_train
 results_test
-using AlgebraOfGraphics
-const AOG = AlgebraOfGraphics
-set_aog_theme!()
-update_theme!(resolution = (1920÷2, 1080÷3))
+
 begin
 draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:acc=>"Accuracy"))
 current_axis().title = "Reduced train data"; current_figure()
@@ -165,48 +165,75 @@ begin
 end
 
 ##
+
+let #For testing isolated case
+    n_trees = 50
+    bagging_fraction = 0.8
+
+    t0 = time()
+    mach_pca = machine(PCA(maxoutdim=15), picdata)
+    MLJ.fit!(mach_pca, rows=traininds, verbosity=0)
+    picdata_projected = MLJ.transform(mach_pca, picdata)
+
+    ensamble = EnsembleModel(Tree(; max_depth=25); bagging_fraction, n=n_trees, acceleration=CPUThreads())
+    forest_mach = machine(ensamble, picdata_projected, picclasses)
+    MLJ.fit!(forest_mach, rows=traininds, verbosity=0)
+    ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
+    time_elapsed = time() - t0
+
+end
+
 begin
-    global results_train = DataFrame(time=Float64[], n = Int[], bagging_fraction=Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
-    global results_test  = DataFrame(time=Float64[], n = Int[], bagging_fraction=Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
-    for n = 10:10:200
+    global results_train = DataFrame(time=Float64[], n_trees = Int[], bagging_fraction = Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
+    global results_test  = DataFrame(time=Float64[], n_trees = Int[], bagging_fraction = Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
+    for n_trees = 40:40:320
         
-        for bagging_fraction in 0.5:0.1:1.0
-            
+        for bagging_fraction in 0.5:0.1:1
+            @show n_trees, bagging_fraction
             t0 = time()
-            mach_pca = machine(PCA(maxoutdim=15), picdata)
-            MLJ.fit!(mach_pca, rows=traininds)
+            mach_pca = machine(pca(maxoutdim=15), picdata)
+            MLJ.fit!(mach_pca, rows=traininds, verbosity=0)
             picdata_projected = MLJ.transform(mach_pca, picdata)
 
-            forest = EnsembleModel(Tree(; max_depth=25); n, bagging_fraction, acceleration=CPUThreads())
+            ensamble = EnsembleModel(Tree(; max_depth=25); bagging_fraction, n=n_trees, acceleration=CPUThreads())
             forest_mach = machine(ensamble, picdata_projected, picclasses)
-            MLJ.fit!(forest_mach, rows=traininds)
+            MLJ.fit!(forest_mach, rows=traininds, verbosity=0)
             ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
             time_elapsed = time() - t0
             # return 0
             local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
             pushfirst!(local_result_test , bagging_fraction)
-            pushfirst!(local_result_test , n)
+            pushfirst!(local_result_test , n_trees)
             pushfirst!(local_result_test , time_elapsed)
             push!(results_test, local_result_test)
 
 
             local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
             pushfirst!(local_result_train, bagging_fraction)
-            pushfirst!(local_result_train, n)
+            pushfirst!(local_result_train, n_trees)
             pushfirst!(local_result_train , time_elapsed)
             push!(results_train, local_result_train)
         end
     end
 end
+
 begin
-    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
+    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
     current_axis().title = "Reduced train data"; current_figure()
 end
+
 begin
-    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_test) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
+    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_test.acc), markersize=40) * AOG.data(results_test) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
     current_axis().title = "Reduced test data"; current_figure()
 end
+
 begin
+    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_test.acc), markersize=40) * AOG.data(filter(row->row.bagging_fraction!=1, results_test)) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
+    current_axis().title = "Reduced test data"; current_figure()
+end
+
+begin
+    @assert results_train.time == results_test.time
     draw(visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:time=>"Time to train and classify (s)"))
     current_axis().title = "Reduced data timings"; current_figure()
 end
@@ -214,6 +241,72 @@ end
 
 
 
+
+begin
+    global results_train_API = DataFrame(time=[], acc=[], prec=[], rec=[])
+    global results_test_API  = DataFrame(time=[], acc=[], prec=[], rec=[])
+    for i in 1:10
+        @show n_trees, bagging_fraction
+        t0 = time()
+        mach_pca = machine(PCA(maxoutdim=15), picdata)
+        MLJ.fit!(mach_pca, rows=traininds, verbosity=0)
+        picdata_projected = MLJ.transform(mach_pca, picdata)
+
+        ensamble = EnsembleModel(Tree(; max_depth=25); bagging_fraction, n=n_trees, acceleration=CPUThreads())
+        forest_mach = machine(ensamble, picdata_projected, picclasses)
+        MLJ.fit!(forest_mach, rows=traininds, verbosity=0)
+        ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
+        time_elapsed = time() - t0
+        # return 0
+        local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        # pushfirst!(local_result_test , bagging_fraction)
+        # pushfirst!(local_result_test , n_trees)
+        pushfirst!(local_result_test , time_elapsed)
+        push!(results_test, local_result_test)
+
+
+        local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        # pushfirst!(local_result_train, bagging_fraction)
+        # pushfirst!(local_result_train, n_trees)
+        pushfirst!(local_result_train , time_elapsed)
+        push!(results_train, local_result_train)
+    end
+end
+
+eachindex(picclasses)
+
+testinds_vec_API = batch(eachindex(pictures), 10, true)
+traininds_vec_API = [deleteat!(collect(eachindex(pictures)), testinds|>sort) for testinds in testinds_vec_API]
+for i in 1:10   #? Testing that it works
+    @assert sort(vcat(testinds_vec_API[i], traininds_vec_API[i])) == eachindex(pictures)
+end
+
+picIDs = pictures.ID
+ID_of_ind(ind) = picIDs[ind]
+
+IDs_DJ = batch(1:33, 11, false)
+using ProgressMeter
+begin
+    traininds_vec_DJ = Vector{Vector{Int64}}(undef, length(IDs_DJ))
+    testinds_vec_DJ = Vector{Vector{Int64}}(undef, length(IDs_DJ))
+    @showprogress for i in eachindex(IDs_DJ)
+        bitmask = (ID_of_ind.(eachindex(pictures)) .∈ IDs_DJ[i]|>Ref)
+        traininds_ = eachindex(pictures)[.!bitmask]
+        testinds_ = eachindex(pictures)[bitmask]
+        @assert sort(vcat(testinds_, traininds_)) == eachindex(pictures)
+        @assert unique(ID_of_ind.(testinds_)) == IDs_DJ[i]
+        traininds_vec_DJ[i] = traininds_
+        testinds_vec_DJ[i] = testinds_
+    end
+end
+
+begin
+    df = DataFrame(n_trees = Int64[], μ_acc=Float64[], σ_acc=Float64[], SE_acc=[])
+    for group in groupby(results_test, :n_trees)
+        push!(df, [group.n_trees|>unique|>only, mean(group.acc), std(group.acc), std(group.acc)/sqrt(length(group.acc))])
+    end
+    df
+end
 
 
 
