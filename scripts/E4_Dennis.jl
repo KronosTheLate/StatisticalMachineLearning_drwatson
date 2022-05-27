@@ -43,6 +43,7 @@ function myqqplot(observations, dist = Normal; title = "QQ plot")
     current_figure()
 end
 using Statistics: mean
+using ProgressMeter
 
 using AlgebraOfGraphics
 const AOG = AlgebraOfGraphics
@@ -163,6 +164,8 @@ begin
     draw(visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:max_depth => "Max tree depth", :n_PCs => "Number of PCs", color=:time=>"Time to train and classify (s)"))
     current_axis().title = "Reduced data timings"; current_figure()
 end
+maxoutdim = 15
+max_depth = 25
 
 ##
 
@@ -184,6 +187,8 @@ let #For testing isolated case
 end
 
 begin
+    global hyperopt_forest = load(datadir("hyperopt_forest.jld2"))["hyperopt_forest"]
+    return hyperopt_forest
     global results_train = DataFrame(time=Float64[], n_trees = Int[], bagging_fraction = Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
     global results_test  = DataFrame(time=Float64[], n_trees = Int[], bagging_fraction = Float64[], acc=Float64[], prec=Float64[], rec=Float64[])
     for n_trees = 40:40:320
@@ -191,11 +196,11 @@ begin
         for bagging_fraction in 0.5:0.1:1
             @show n_trees, bagging_fraction
             t0 = time()
-            mach_pca = machine(pca(maxoutdim=15), picdata)
+            mach_pca = machine(pca(;maxoutdim, ), picdata)
             MLJ.fit!(mach_pca, rows=traininds, verbosity=0)
             picdata_projected = MLJ.transform(mach_pca, picdata)
 
-            ensamble = EnsembleModel(Tree(; max_depth=25); bagging_fraction, n=n_trees, acceleration=CPUThreads())
+            ensamble = EnsembleModel(Tree(; max_depth, ); bagging_fraction, n=n_trees, acceleration=CPUThreads())
             forest_mach = machine(ensamble, picdata_projected, picclasses)
             MLJ.fit!(forest_mach, rows=traininds, verbosity=0)
             ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
@@ -217,75 +222,112 @@ begin
     end
 end
 
-begin
-    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_train.acc), markersize=40) * AOG.data(results_train) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
-    current_axis().title = "Reduced train data"; current_figure()
+
+
+let
+    plt = visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(hyperopt_forest.train) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy")
+    fig = draw(plt, axis=(title="Reduced train data", xticks=hyperopt_forest.train.n_trees|>unique|>sort, yticks=hyperopt_forest.train.bagging_fraction|>unique|>sort))
+    save(plotsdir("hyperopt_forest_train.png"), fig)
+    fig
 end
 
-begin
-    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_test.acc), markersize=40) * AOG.data(results_test) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
-    current_axis().title = "Reduced test data"; current_figure()
+let
+    plt = visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(hyperopt_forest.test) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy")
+    fig = draw(plt, axis=(title="Reduced test data", xticks=hyperopt_forest.train.n_trees|>unique|>sort, yticks=hyperopt_forest.train.bagging_fraction|>unique|>sort))
+    save(plotsdir("hyperopt_forest_test.png"), fig)
+    fig
 end
 
-begin
-    draw(visual(Scatter, colormap=:thermal, colorrange=extrema(results_test.acc), markersize=40) * AOG.data(filter(row->row.bagging_fraction!=1, results_test)) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy"))
-    current_axis().title = "Reduced test data"; current_figure()
+let
+    plt = visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(filter(row->row.bagging_fraction<0.9, hyperopt_forest.test)) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:acc=>"Accuracy")
+    fig = draw(plt, axis=(title="Reduced test data", xticks=hyperopt_forest.train.n_trees|>unique|>sort, yticks=hyperopt_forest.train.bagging_fraction|>unique|>sort))
+    save(plotsdir("hyperopt_forest_test_smaller.png"), fig)
+    fig
 end
 
-begin
+let
     @assert results_train.time == results_test.time
-    draw(visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:n => "Number of trees", :bagging_fraction => "Bagging fraction", color=:time=>"Time to train and classify (s)"))
-    current_axis().title = "Reduced data timings"; current_figure()
+    plt = visual(Scatter, colormap=:thermal, markersize=40) * AOG.data(results_train) * mapping(:n_trees => "Number of trees", :bagging_fraction => "Bagging fraction", color=:time=>"Time to train and classify (s)")
+    fig = draw(plt, axis=(title="Reduced data timings", xticks=hyperopt_forest.train.n_trees|>unique|>sort, yticks=hyperopt_forest.train.bagging_fraction|>unique|>sort))
+    save(plotsdir("hyperopt_forest_timings.png"), fig)
+    fig
 end
 
+bagging_fraction = 0.7
+n_trees = 160
 
-
-
-
-begin
-    global results_train_API = DataFrame(time=[], acc=[], prec=[], rec=[])
-    global results_test_API  = DataFrame(time=[], acc=[], prec=[], rec=[])
-    for i in 1:10
-        @show n_trees, bagging_fraction
-        t0 = time()
-        mach_pca = machine(PCA(maxoutdim=15), picdata)
-        MLJ.fit!(mach_pca, rows=traininds, verbosity=0)
-        picdata_projected = MLJ.transform(mach_pca, picdata)
-
-        ensamble = EnsembleModel(Tree(; max_depth=25); bagging_fraction, n=n_trees, acceleration=CPUThreads())
-        forest_mach = machine(ensamble, picdata_projected, picclasses)
-        MLJ.fit!(forest_mach, rows=traininds, verbosity=0)
-        ŷ = MLJ.predict_mode(forest_mach, picdata_projected)
-        time_elapsed = time() - t0
-        # return 0
-        local_result_test  = [metric()(ŷ[testinds] , picclasses[testinds])  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
-        # pushfirst!(local_result_test , bagging_fraction)
-        # pushfirst!(local_result_test , n_trees)
-        pushfirst!(local_result_test , time_elapsed)
-        push!(results_test, local_result_test)
-
-
-        local_result_train = [metric()(ŷ[traininds], picclasses[traininds]) for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
-        # pushfirst!(local_result_train, bagging_fraction)
-        # pushfirst!(local_result_train, n_trees)
-        pushfirst!(local_result_train , time_elapsed)
-        push!(results_train, local_result_train)
-    end
-end
-
-eachindex(picclasses)
+##! Real problem, API
 
 testinds_vec_API = batch(eachindex(pictures), 10, true)
 traininds_vec_API = [deleteat!(collect(eachindex(pictures)), testinds|>sort) for testinds in testinds_vec_API]
-for i in 1:10   #? Testing that it works
+
+for i in 1:10   #? Check completeness of parts
     @assert sort(vcat(testinds_vec_API[i], traininds_vec_API[i])) == eachindex(pictures)
 end
+bla = if true
+    @info "Test"
+    4
+else
+    6
+end
+bla
+begin
+    # results_train_API = DataFrame(i=[], time=[], acc=[], prec=[], rec=[])
+    # results_test_API = DataFrame(i=[], time=[], acc=[], prec=[], rec=[])
+    # save(datadir("results_train_API.jld2"), @strdict(results_train_API))
+    # save(datadir("results_test_API.jld2"), @strdict(results_test_API))
+    global results_train_API  = load(datadir("results_train_API.jld2"))["results_train_API"]
+    global results_test_API = load(datadir("results_test_API.jld2"))["results_test_API"]
+    
+    @assert size(results_train_API) == size(results_test_API)
+
+    i_new = if size(results_train_API, 1) == 0
+        1
+    else
+        @assert results_train_API.i[end] == results_test_API.i[end]
+        results_train_API.i[end]+1
+    end
+    
+    let i = i_new
+        @show i
+        traindata = pictures[traininds_vec_API[i]]|>datamat|>transpose|>MLJ.table
+        testdata = pictures[testinds_vec_API[i]]|>datamat|>transpose|>MLJ.table
+        y_train = coerce(pictures[traininds_vec_API[i]].class, Multiclass)
+        y_test = coerce(pictures[testinds_vec_API[i]].class, Multiclass)
+
+        t0 = time()
+        mach_pca = machine(pca(;maxoutdim, ), traindata)
+        MLJ.fit!(mach_pca, verbosity=0)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        ensamble = EnsembleModel(Tree(; max_depth, ); bagging_fraction, n=n_trees, acceleration=CPUThreads())
+        forest_mach = machine(ensamble, traindata_projected, y_train)
+        MLJ.fit!(forest_mach, verbosity=0)
+        ŷ_train = MLJ.predict_mode(forest_mach, traindata_projected)
+        ŷ_test = MLJ.predict_mode(forest_mach, testdata_projected)
+        time_elapsed = time() - t0
+        # return 0
+        local_result_train  = [metric()(ŷ_train, y_train)  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        local_result_test   = [metric()(ŷ_test , y_test )  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        pushfirst!(local_result_train, time_elapsed)
+        pushfirst!(local_result_test , time_elapsed)
+        pushfirst!(local_result_train, i)
+        pushfirst!(local_result_test , i)
+        push!(results_train_API, local_result_train)
+        push!(results_test_API,  local_result_test )
+        save(datadir("results_train_API.jld2"), @strdict(results_train_API))
+        save(datadir("results_test_API.jld2"), @strdict(results_test_API))
+    end
+end
+
+##! Real problem, IDs_DJ
 
 picIDs = pictures.ID
 ID_of_ind(ind) = picIDs[ind]
 
 IDs_DJ = batch(1:33, 11, false)
-using ProgressMeter
+
 begin
     traininds_vec_DJ = Vector{Vector{Int64}}(undef, length(IDs_DJ))
     testinds_vec_DJ = Vector{Vector{Int64}}(undef, length(IDs_DJ))
@@ -297,6 +339,43 @@ begin
         @assert unique(ID_of_ind.(testinds_)) == IDs_DJ[i]
         traininds_vec_DJ[i] = traininds_
         testinds_vec_DJ[i] = testinds_
+    end
+end
+
+begin
+    #DataFrame(time=[], acc=[], prec=[], rec=[])
+    # save(datadir("results_train_API.jld2"), @strdict(results_train_API))
+    # save(datadir("results_test_API.jld2"), @strdict(results_test_API))
+    global results_train_API  = load(datadir("results_train_API.jld2"))["results_train_API"]
+    global results_test_API = load(datadir("results_test_API.jld2"))["results_test_API"]
+    @showprogress for i in 1:1#0
+        @show i
+        traindata = pictures[traininds_vec_API[i]]|>datamat|>transpose|>MLJ.table
+        testdata = pictures[testinds_vec_API[i]]|>datamat|>transpose|>MLJ.table
+        y_train = coerce(pictures[traininds_vec_API[i]].class, Multiclass)
+        y_test = coerce(pictures[testinds_vec_API[i]].class, Multiclass)
+
+        t0 = time()
+        mach_pca = machine(pca(;maxoutdim, ), traindata)
+        MLJ.fit!(mach_pca, verbosity=0)
+        traindata_projected = MLJ.transform(mach_pca, traindata)
+        testdata_projected = MLJ.transform(mach_pca, testdata)
+
+        ensamble = EnsembleModel(Tree(; max_depth, ); bagging_fraction, n=n_trees, acceleration=CPUThreads())
+        forest_mach = machine(ensamble, traindata_projected, y_train)
+        MLJ.fit!(forest_mach, verbosity=0)
+        ŷ_train = MLJ.predict_mode(forest_mach, traindata_projected)
+        ŷ_test = MLJ.predict_mode(forest_mach, testdata_projected)
+        time_elapsed = time() - t0
+        # return 0
+        local_result_train  = [metric()(ŷ_train, y_train)  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        local_result_test   = [metric()(ŷ_test , y_test )  for metric in [Accuracy, MulticlassPrecision, MulticlassTruePositiveRate]]
+        pushfirst!(local_result_train, time_elapsed)
+        pushfirst!(local_result_test , time_elapsed)
+        push!(results_train_API, local_result_train)
+        push!(results_test_API,  local_result_test )
+        save(datadir("results_train_API.jld2"), @strdict(results_train_API))
+        save(datadir("results_test_API.jld2"), @strdict(results_test_API))
     end
 end
 
